@@ -1,0 +1,21 @@
+KUMANDA MASTER SYSTEM - QUICK START
+====================================
+
+FIRST TIME SETUP (run once):
+----------------------------
+sudo ./install.sh
+
+
+TO RUN THE SYSTEM:
+------------------
+xhost +local:root
+sudo python3 master.py
+
+
+OR USE THE HELPER SCRIPT:
+-------------------------
+./start.sh
+
+
+WIFI SSID: CaptivePortal
+PORTAL URL: http://192.168.4.1
