@@ -29,33 +29,32 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# Cleanup function
+# Cleanup function - runs stop_hotspot.sh for thorough cleanup
 cleanup() {
     echo -e "\n${YELLOW}🧹 Cleaning up...${NC}"
     
-    # Kill processes
-    pkill -f "hostapd.*hostapd.conf" 2>/dev/null
-    pkill -f "dnsmasq.*dnsmasq.conf" 2>/dev/null
-    pkill -f "server.py" 2>/dev/null
-    
-    # Remove iptables rules
-    iptables -t nat -D PREROUTING -i $INTERFACE -p tcp --dport 80 -j DNAT --to-destination $IP_ADDR:80 2>/dev/null
-    iptables -t nat -D PREROUTING -i $INTERFACE -p tcp --dport 443 -j DNAT --to-destination $IP_ADDR:80 2>/dev/null
-    iptables -D FORWARD -i $INTERFACE -j ACCEPT 2>/dev/null
-    
-    # Restore NetworkManager control
-    nmcli device set $INTERFACE managed yes 2>/dev/null
-    
-    # Bring interface down
-    ip link set $INTERFACE down 2>/dev/null
-    ip addr flush dev $INTERFACE 2>/dev/null
+    # Run stop_hotspot.sh for thorough cleanup (suppress its output)
+    bash "$SCRIPT_DIR/stop_hotspot.sh" 2>/dev/null || {
+        # Fallback cleanup if stop_hotspot.sh fails
+        pkill -f "hostapd.*hostapd.conf" 2>/dev/null
+        pkill -f "dnsmasq.*dnsmasq.conf" 2>/dev/null
+        pkill -f "server.py" 2>/dev/null
+        
+        iptables -t nat -D PREROUTING -i $INTERFACE -p tcp --dport 80 -j DNAT --to-destination $IP_ADDR:80 2>/dev/null
+        iptables -t nat -D PREROUTING -i $INTERFACE -p tcp --dport 443 -j DNAT --to-destination $IP_ADDR:80 2>/dev/null
+        iptables -D FORWARD -i $INTERFACE -j ACCEPT 2>/dev/null
+        
+        nmcli device set $INTERFACE managed yes 2>/dev/null
+        ip link set $INTERFACE down 2>/dev/null
+        ip addr flush dev $INTERFACE 2>/dev/null
+    }
     
     echo -e "${GREEN}✅ Cleanup complete${NC}"
     exit 0
 }
 
-# Set trap for cleanup on exit
-trap cleanup EXIT INT TERM
+# Set trap for cleanup on ANY exit (normal, Ctrl+C, kill, etc.)
+trap cleanup EXIT INT TERM HUP QUIT ABRT
 
 # Step 1: Stop NetworkManager from managing this interface
 echo -e "${YELLOW}📡 Step 1: Configuring network interface...${NC}"

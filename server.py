@@ -49,33 +49,69 @@ class CaptivePortalHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
     
+    def send_redirect(self, location):
+        """Send HTTP 302 redirect"""
+        self.send_response(302)
+        self.send_header('Location', location)
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        self.end_headers()
+    
+    def send_captive_redirect(self, location):
+        """Send HTML page that redirects - more reliable for captive portal detection"""
+        html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="0;url={location}">
+    <script>window.location.href="{location}";</script>
+</head>
+<body>
+    <h1>Redirecting...</h1>
+    <p><a href="{location}">Click here if not redirected</a></p>
+</body>
+</html>'''
+        content = html.encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.send_header('Content-Length', len(content))
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.end_headers()
+        self.wfile.write(content)
+    
     def do_GET(self):
         """Handle GET requests"""
         path = urlparse(self.path).path
         client_ip = self.get_client_ip()
         
-        # Captive portal detection URLs - redirect to portal
-        captive_portal_paths = [
-            '/generate_204',           # Android
-            '/gen_204',                 # Android
-            '/hotspot-detect.html',    # iOS/macOS
-            '/success.txt',            # iOS
-            '/library/test/success.html',  # macOS
-            '/ncsi.txt',               # Windows
-            '/connecttest.txt',        # Windows
-            '/redirect',               # Windows
-            '/canonical.html',         # Firefox
-        ]
+        portal_url = f'http://{PORTAL_IP}/portal'
         
-        if path in captive_portal_paths or path == '/':
+        # Android captive portal detection - return non-204 to trigger popup
+        if path in ['/generate_204', '/gen_204']:
+            print(f"📱 Android device detected: {client_ip}")
+            self.send_captive_redirect(portal_url)
+        
+        # iOS/macOS captive portal detection
+        elif path in ['/hotspot-detect.html', '/success.txt', '/library/test/success.html']:
+            print(f"📱 iOS/macOS device detected: {client_ip}")
+            self.send_captive_redirect(portal_url)
+        
+        # Windows captive portal detection
+        elif path in ['/ncsi.txt', '/connecttest.txt', '/redirect']:
+            print(f"📱 Windows device detected: {client_ip}")
+            self.send_captive_redirect(portal_url)
+        
+        # Firefox/Other
+        elif path in ['/canonical.html', '/kindle-wifi/wifistub.html', '/check_network_status.txt']:
+            print(f"📱 Device detected: {client_ip}")
+            self.send_captive_redirect(portal_url)
+        
+        elif path == '/portal' or path == '/':
             self.send_portal_page()
-        elif path == '/portal':
-            self.send_portal_page()
-        elif path.endswith('.html'):
-            self.send_portal_page()
+        
         else:
-            # For any other path, serve the portal
-            self.send_portal_page()
+            # Any other path - redirect to portal
+            self.send_captive_redirect(portal_url)
     
     def do_POST(self):
         """Handle POST requests"""
