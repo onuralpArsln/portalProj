@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr">
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kumanda Portal</title>
+    <title>Captive Portal</title>
     <style>
         * {
             margin: 0;
@@ -19,61 +18,47 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 15px;
+            padding: 20px;
         }
 
         .container {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 20px;
-            padding: 25px;
+            padding: 40px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 450px;
+            max-width: 400px;
             width: 100%;
         }
 
         h1 {
-            color: #FFD700;
+            color: #fff;
             text-align: center;
-            margin-bottom: 5px;
-            font-size: 1.8rem;
+            margin-bottom: 10px;
+            font-size: 2rem;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
 
         .subtitle {
             color: rgba(255, 255, 255, 0.7);
             text-align: center;
-            margin-bottom: 20px;
-            font-size: 0.85rem;
-        }
-
-        .section-title {
-            color: #FFD700;
+            margin-bottom: 30px;
             font-size: 0.9rem;
-            margin: 15px 0 10px 0;
-            padding-bottom: 5px;
-            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
         }
 
         .button-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .button-grid-2 {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
         }
 
         .btn {
-            padding: 18px 10px;
-            font-size: 1rem;
+            padding: 25px 20px;
+            font-size: 1.2rem;
             font-weight: 600;
             border: none;
-            border-radius: 12px;
+            border-radius: 15px;
             cursor: pointer;
             transition: all 0.3s ease;
             color: white;
@@ -98,63 +83,41 @@
         }
 
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
 
         .btn:active {
             transform: translateY(0);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .btn-amount {
-            font-size: 1.1rem;
-        }
-
-        /* TL Buttons - Green shades */
-        .btn-5 {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-
-        .btn-10 {
-            background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
-        }
-
-        .btn-20 {
-            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
-        }
-
-        .btn-50 {
-            background: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
-        }
-
-        .btn-100 {
-            background: linear-gradient(135deg, #1d976c 0%, #93f9b9 100%);
-        }
-
-        /* Action Buttons */
-        .btn-sil {
-            background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
-        }
-
-        .btn-oyun {
+        .btn-1 {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
-        .btn-kazanc {
+        .btn-2 {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .btn-3 {
+            background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+        }
+
+        .btn-4 {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
 
         .status {
-            margin-top: 20px;
-            padding: 12px;
+            margin-top: 25px;
+            padding: 15px;
             border-radius: 10px;
             text-align: center;
             color: white;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            min-height: 45px;
+            min-height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -165,109 +128,57 @@
             border-color: rgba(56, 239, 125, 0.3);
         }
 
-        .status.error {
-            background: rgba(255, 100, 100, 0.2);
-            border-color: rgba(255, 100, 100, 0.3);
-        }
-
         @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .loading {
             animation: pulse 1s infinite;
         }
-
-        .btn-icon {
-            display: block;
-            font-size: 1.3rem;
-            margin-bottom: 3px;
-        }
     </style>
 </head>
-
 <body>
     <div class="container">
-        <h1>🎮 Kumanda</h1>
-        <p class="subtitle">Kontrol Paneli</p>
-
-        <!-- Para Yükleme Butonları -->
-        <div class="section-title">💰 Para Yükle</div>
+        <h1>🌐 Portal</h1>
+        <p class="subtitle">Select an option below</p>
+        
         <div class="button-grid">
-            <button class="btn btn-5 btn-amount" onclick="sendCommand('yukle5')">5 TL</button>
-            <button class="btn btn-10 btn-amount" onclick="sendCommand('yukle10')">10 TL</button>
-            <button class="btn btn-20 btn-amount" onclick="sendCommand('yukle20')">20 TL</button>
-            <button class="btn btn-50 btn-amount" onclick="sendCommand('yukle50')">50 TL</button>
-            <button class="btn btn-100 btn-amount" onclick="sendCommand('yukle100')">100 TL</button>
+            <button class="btn btn-1" onclick="sendClick(1)">Button 1</button>
+            <button class="btn btn-2" onclick="sendClick(2)">Button 2</button>
+            <button class="btn btn-3" onclick="sendClick(3)">Button 3</button>
+            <button class="btn btn-4" onclick="sendClick(4)">Button 4</button>
         </div>
-
-        <!-- İşlem Butonları -->
-        <div class="section-title">⚡ İşlemler</div>
-        <div class="button-grid-2">
-            <button class="btn btn-sil" onclick="sendCommand('sil')">
-                <span class="btn-icon">🗑️</span>Sil
-            </button>
-            <button class="btn btn-oyun" onclick="sendCommand('oyun')">
-                <span class="btn-icon">🎮</span>Oyun
-            </button>
-        </div>
-        <div class="button-grid-2" style="margin-top: 10px;">
-            <button class="btn btn-kazanc" onclick="sendCommand('kazanc')" style="grid-column: span 2;">
-                <span class="btn-icon">📊</span>Kazanç Göster
-            </button>
-        </div>
-
-        <div id="status" class="status">Hazır</div>
+        
+        <div id="status" class="status">Click a button to interact</div>
     </div>
 
     <script>
-        const COMMANDS = {
-            'sil': { code: '3217', name: 'Sil' },
-            'yukle5': { code: '3117', name: '5 TL Yükle' },
-            'yukle10': { code: '3127', name: '10 TL Yükle' },
-            'yukle20': { code: '3147', name: '20 TL Yükle' },
-            'yukle50': { code: '31107', name: '50 TL Yükle' },
-            'yukle100': { code: '3567', name: '100 TL Yükle' },
-            'oyun': { code: '3357', name: 'Oyun Aç/Kapat' },
-            'kazanc': { code: '4455', name: 'Kazanç Göster' }
-        };
-
-        function sendCommand(cmd) {
+        function sendClick(buttonNumber) {
             const statusEl = document.getElementById('status');
-            const cmdInfo = COMMANDS[cmd];
-
-            statusEl.textContent = `${cmdInfo.name} gönderiliyor...`;
+            statusEl.textContent = 'Sending...';
             statusEl.classList.add('loading');
-            statusEl.classList.remove('success', 'error');
+            statusEl.classList.remove('success');
 
-            fetch('/command', {
+            fetch('/click', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ command: cmd, code: cmdInfo.code })
+                body: JSON.stringify({ button: buttonNumber })
             })
-                .then(response => response.json())
-                .then(data => {
-                    statusEl.textContent = `✓ ${cmdInfo.name} - Başarılı!`;
-                    statusEl.classList.remove('loading');
-                    statusEl.classList.add('success');
-                })
-                .catch(error => {
-                    statusEl.textContent = `✓ ${cmdInfo.name} gönderildi`;
-                    statusEl.classList.remove('loading');
-                    statusEl.classList.add('success');
-                });
+            .then(response => response.json())
+            .then(data => {
+                statusEl.textContent = `✓ Button ${buttonNumber} clicked successfully!`;
+                statusEl.classList.remove('loading');
+                statusEl.classList.add('success');
+            })
+            .catch(error => {
+                statusEl.textContent = `Button ${buttonNumber} clicked (offline mode)`;
+                statusEl.classList.remove('loading');
+                statusEl.classList.add('success');
+            });
         }
     </script>
 </body>
-
 </html>
