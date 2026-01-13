@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 INTERFACE="wlan0"
 STATIC_IP="192.168.4.1"
 NETMASK="255.255.255.0"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVICE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
@@ -26,17 +26,17 @@ fi
 echo -e "${GREEN}=== Starting Captive Portal Hotspot ===${NC}\n"
 
 # Check if required files exist
-if [ ! -f "$SCRIPT_DIR/hostapd.conf" ]; then
+if [ ! -f "$SERVICE_DIR/hostapd.conf" ]; then
     echo -e "${RED}Error: hostapd.conf not found${NC}"
     exit 1
 fi
 
-if [ ! -f "$SCRIPT_DIR/dnsmasq.conf" ]; then
+if [ ! -f "$SERVICE_DIR/dnsmasq.conf" ]; then
     echo -e "${RED}Error: dnsmasq.conf not found${NC}"
     exit 1
 fi
 
-if [ ! -f "$SCRIPT_DIR/server.py" ]; then
+if [ ! -f "$SERVICE_DIR/server.py" ]; then
     echo -e "${RED}Error: server.py not found${NC}"
     exit 1
 fi
@@ -60,7 +60,7 @@ sleep 1
 
 # Step 4: Start hostapd
 echo -e "${YELLOW}[4/7]${NC} Starting hostapd..."
-hostapd -B "$SCRIPT_DIR/hostapd.conf" > /tmp/hostapd.log 2>&1
+hostapd -B "$SERVICE_DIR/hostapd.conf" > /tmp/hostapd.log 2>&1
 sleep 2
 
 # Check if hostapd is running
@@ -73,7 +73,7 @@ fi
 
 # Step 5: Start dnsmasq
 echo -e "${YELLOW}[5/7]${NC} Starting dnsmasq..."
-dnsmasq -C "$SCRIPT_DIR/dnsmasq.conf" --log-facility=/tmp/dnsmasq.log
+dnsmasq -C "$SERVICE_DIR/dnsmasq.conf" --log-facility=/tmp/dnsmasq.log
 sleep 1
 
 # Check if dnsmasq is running
@@ -102,7 +102,7 @@ iptables -A OUTPUT -o $INTERFACE -j ACCEPT
 
 # Step 7: Start Python web server
 echo -e "${YELLOW}[7/7]${NC} Starting web server..."
-cd "$SCRIPT_DIR"
+cd "$SERVICE_DIR"
 python3 server.py > /tmp/portal-server.log 2>&1 &
 echo $! > /tmp/portal-server.pid
 sleep 1

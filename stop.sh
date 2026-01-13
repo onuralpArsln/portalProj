@@ -13,6 +13,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 INTERFACE="wlan0"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
