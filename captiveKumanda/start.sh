@@ -192,6 +192,8 @@ log_debug "Killing any existing dnsmasq processes"
 killall dnsmasq 2>/dev/null || true
 
 log_debug "Running: dnsmasq -C $PROJECT_ROOT/dnsmasq.conf"
+rm -f /tmp/dnsmasq.log # Remove old log to prevent permission errors
+touch /tmp/dnsmasq.log && chmod 666 /tmp/dnsmasq.log # Ensure writable
 if dnsmasq -C "$PROJECT_ROOT/dnsmasq.conf" --log-facility=/tmp/dnsmasq.log 2>&1 | tee /tmp/dnsmasq_start.log; then
     sleep 1
     if pgrep -x "dnsmasq" > /dev/null; then
