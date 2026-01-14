@@ -11,9 +11,19 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Configuration
-INTERFACE="wlan0"
+# Get project root
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Load configuration from config.sh
+CONFIG_FILE="$PROJECT_ROOT/config.sh"
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo -e "${RED}Error: Configuration file not found: $CONFIG_FILE${NC}"
+    echo -e "Please create config.sh in the project root"
+    exit 1
+fi
+
+# Source configuration
+source "$CONFIG_FILE"
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then

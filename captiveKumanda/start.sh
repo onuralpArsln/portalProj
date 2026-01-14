@@ -39,11 +39,11 @@ log_debug() {
 }
 
 # Get script directory
-SERVICE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-log_debug "Script directory: $SERVICE_DIR"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+log_debug "Project directory: $PROJECT_ROOT"
 
 # Load configuration
-CONFIG_FILE="$SERVICE_DIR/config.sh"
+CONFIG_FILE="$PROJECT_ROOT/config.sh"
 if [ ! -f "$CONFIG_FILE" ]; then
     log_error "Configuration file not found: $CONFIG_FILE"
     echo -e "Please create config.sh from the template"
@@ -70,26 +70,26 @@ fi
 
 # Check if required files exist
 log_info "Checking required files..."
-if [ ! -f "$SERVICE_DIR/hostapd.conf" ]; then
-    log_error "hostapd.conf not found in $SERVICE_DIR"
+if [ ! -f "$PROJECT_ROOT/hostapd.conf" ]; then
+    log_error "hostapd.conf not found in $PROJECT_ROOT"
     exit 1
 fi
 log_debug "✓ hostapd.conf found"
 
-if [ ! -f "$SERVICE_DIR/dnsmasq.conf" ]; then
-    log_error "dnsmasq.conf not found in $SERVICE_DIR"
+if [ ! -f "$PROJECT_ROOT/dnsmasq.conf" ]; then
+    log_error "dnsmasq.conf not found in $PROJECT_ROOT"
     exit 1
 fi
 log_debug "✓ dnsmasq.conf found"
 
-if [ ! -f "$SERVICE_DIR/server.py" ]; then
-    log_error "server.py not found in $SERVICE_DIR"
+if [ ! -f "$PROJECT_ROOT/server.py" ]; then
+    log_error "server.py not found in $PROJECT_ROOT"
     exit 1
 fi
 log_debug "✓ server.py found"
 
-if [ ! -f "$SERVICE_DIR/portal.html" ]; then
-    log_error "portal.html not found in $SERVICE_DIR"
+if [ ! -f "$PROJECT_ROOT/portal.html" ]; then
+    log_error "portal.html not found in $PROJECT_ROOT"
     exit 1
 fi
 log_debug "✓ portal.html found"
@@ -157,12 +157,12 @@ sleep 1
 
 # Step 5: Start hostapd
 echo -e "\n${YELLOW}[5/8]${NC} Starting hostapd..."
-log_debug "Using config: $SERVICE_DIR/hostapd.conf"
+log_debug "Using config: $PROJECT_ROOT/hostapd.conf"
 log_debug "Killing any existing hostapd processes"
 killall hostapd 2>/dev/null || true
 
-log_debug "Running: hostapd -B $SERVICE_DIR/hostapd.conf"
-if hostapd -B "$SERVICE_DIR/hostapd.conf" > /tmp/hostapd.log 2>&1; then
+log_debug "Running: hostapd -B $PROJECT_ROOT/hostapd.conf"
+if hostapd -B "$PROJECT_ROOT/hostapd.conf" > /tmp/hostapd.log 2>&1; then
     sleep 2
     if pgrep -x "hostapd" > /dev/null; then
         log_success "hostapd started (PID: $(pgrep -x hostapd))"
@@ -187,12 +187,12 @@ fi
 
 # Step 6: Start dnsmasq
 echo -e "\n${YELLOW}[6/8]${NC} Starting dnsmasq..."
-log_debug "Using config: $SERVICE_DIR/dnsmasq.conf"
+log_debug "Using config: $PROJECT_ROOT/dnsmasq.conf"
 log_debug "Killing any existing dnsmasq processes"
 killall dnsmasq 2>/dev/null || true
 
-log_debug "Running: dnsmasq -C $SERVICE_DIR/dnsmasq.conf"
-if dnsmasq -C "$SERVICE_DIR/dnsmasq.conf" --log-facility=/tmp/dnsmasq.log 2>&1 | tee /tmp/dnsmasq_start.log; then
+log_debug "Running: dnsmasq -C $PROJECT_ROOT/dnsmasq.conf"
+if dnsmasq -C "$PROJECT_ROOT/dnsmasq.conf" --log-facility=/tmp/dnsmasq.log 2>&1 | tee /tmp/dnsmasq_start.log; then
     sleep 1
     if pgrep -x "dnsmasq" > /dev/null; then
         log_success "dnsmasq started (PID: $(pgrep -x dnsmasq))"
@@ -239,7 +239,7 @@ fi
 
 # Step 8: Start Python web server
 echo -e "\n${YELLOW}[8/8]${NC} Starting web server..."
-cd "$SERVICE_DIR"
+cd "$PROJECT_ROOT"
 
 log_debug "Checking for Flask installation"
 if ! python3 -c "import flask" 2>/dev/null; then

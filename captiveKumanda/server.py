@@ -13,25 +13,25 @@ import sys
 import os
 from datetime import datetime
 import server_display  # Server-side on-screen notifications
+import config_loader    # Load configuration from config.sh
 
 app = Flask(__name__)
+
+# Load configuration from config.sh
+print("Loading configuration from config.sh...")
+CONFIG = config_loader.load_config()
 
 # Configuration
 PORTAL_PAGE = "portal.html"
 
-# MySQL Configuration (from kumanda.py)
-MYSQL_CONFIG = {
-    'user': 'fungames',
-    'password': '7396Ksn!',
-    'database': 'fungames',
-    'ssl_disabled': True
-}
-
-USER_ID = 320
-SHOP_ID = 1
+# MySQL Configuration (loaded from config.sh)
+MYSQL_CONFIG = config_loader.get_mysql_config(CONFIG)
+USER_ID = config_loader.get_user_id(CONFIG)
+SHOP_ID = config_loader.get_shop_id(CONFIG)
 
 # Brave Browser Configuration
 GAME_URL = "https://fungames.com/specauth/293?token=4wA52wvxGjmwtOfvQ29F2T4RJT5P65iiFMIfc4Qg8WwRqbp10wNL5W2y5ezS4dBq"
+
 
 
 # ========================

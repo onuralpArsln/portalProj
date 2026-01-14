@@ -1,81 +1,153 @@
 # Gaming Kiosk Captive Portal
 
-Web-based control panel for gaming kiosk operations with captive portal WiFi.
+Web-based gaming kiosk control panel with WiFi captive portal. Centralized configuration with automatic WiFi detection.
 
-## Quick Start
+## 🚀 Quick Start (New Device)
 
-### 1. Find Your WiFi Interface
 ```bash
-./find_interface.sh
+cd ~/captiveKumanda
+sudo ./install.sh           # Install all dependencies + auto-detect WiFi
+nano config.sh              # (Optional) Customize SSID, password, database
+sudo ./start.sh             # Start portal
 ```
 
-### 2. Configure Interface
-Edit `config.sh` and set your WiFi interface:
+Connect to WiFi "CaptivePortal" (password: portal123) → Portal opens at http://192.168.4.1
+
+## 🛑 Stop Portal
+
 ```bash
-INTERFACE="wlan0"  # Change to your interface name
+sudo ./stop.sh
 ```
 
-### 3. Install Dependencies
+## ⚙️ Configuration (config.sh)
+
+All settings in one file - all scripts read from here:
+
 ```bash
-sudo ./install_deps.sh
+INTERFACE="wlan0"           # Auto-detected by install.sh
+SSID="CaptivePortal" 
+WPA_PASSPHRASE="portal123"
+STATIC_IP="192.168.4.1"
+SERVER_PORT="80"
+MYSQL_USER="fungames"
+MYSQL_PASSWORD="7396Ksn!"
+MYSQL_DATABASE="fungames"
+USER_ID="320"
+SHOP_ID="1"
 ```
 
-### 4. Start Captive Portal
+After editing config.sh: `sudo ./configure.sh` to sync all files.
+
+## 📁 Files
+
+| File | Purpose |
+|------|---------|
+| `config.sh` | Central configuration |
+| `install.sh` | Install dependencies + auto-configure |
+| `configure.sh` | Auto-detect WiFi & sync configs |
+| `start.sh` | Start portal |
+| `stop.sh` | Stop portal |
+| `server.py` | Flask web server |
+| `config_loader.py` | Python config reader |
+| `portal.html` | Web interface |
+
+## 🎮 Features
+
+💰 Load money • 🗑️ Clear balance • 🎮 Toggle game • 📊 View earnings • 🔄 Auto-redirect to portal
+
+## 🔧 Commands
+
 ```bash
-sudo ./start.sh
+# Test config
+python3 config_loader.py
+
+# View logs
+tail -f /tmp/portal-server.log
+tail -f /tmp/hostapd.log
+
+# Check interface
+ip link show
+cat config.sh | grep INTERFACE
 ```
 
-### 5. Stop Captive Portal
+## 🛠️ Troubleshooting
+
+**No WiFi interface found:**
 ```bash
-sudo ../stop.sh
+ip link show                # List interfaces
+nano config.sh              # Edit INTERFACE manually
+sudo ./configure.sh         # Sync configs
 ```
 
-## Configuration
-
-All settings are in `config.sh`:
-- **INTERFACE**: WiFi interface name (wlan0, wlan1, etc.)
-- **STATIC_IP**: Gateway IP (default: 192.168.4.1)
-- **SSID**: WiFi network name
-- **WPA_PASSPHRASE**: WiFi password
-- **Database settings**: MySQL credentials
-
-## Features
-
-- 💰 Load money (1 TL, 100 TL, 500 TL, custom amounts)
-- 🗑️ Clear balance
-- 🎮 Toggle game browser
-- 📊 Show earnings
-- 🔄 Auto-redirect to portal when devices connect
-
-## Access
-
-- **Testing**: http://localhost:8080 (run: `python3 server.py`)
-- **Captive Portal**: http://192.168.4.1 (auto-redirects when connected to WiFi)
-
-## Files
-
-- `config.sh` - Main configuration (edit this!)
-- `start.sh` - Start captive portal
-- `server.py` - Flask web server
-- `portal.html` - Gaming kiosk interface
-- `install_deps.sh` - Install dependencies
-- `find_interface.sh` - Detect WiFi interfaces
-
-## Troubleshooting
-
-**Can't find WiFi interface?**
+**hostapd fails:**
 ```bash
-./find_interface.sh
+iw list | grep "interface modes" -A 8  # Check AP mode support
+nano config.sh              # Try CHANNEL="1" or "11"
+sudo ./configure.sh && sudo ./start.sh
 ```
 
-**Server won't start?**
+**Port 80 in use:**
 ```bash
-# Check logs
-cat /tmp/portal-server.log
-
-# Verify dependencies
-sudo ./install_deps.sh
+sudo lsof -i :80            # Check what uses port 80
+sudo systemctl stop apache2 # Stop conflicting service
+# OR: Edit SERVER_PORT in config.sh
 ```
 
-**Wrong interface?**
-Edit `config.sh` and change `INTERFACE="wlan0"` to your interface name.
+**Database error:**
+```bash
+nano config.sh              # Verify MYSQL_* settings
+sudo systemctl status mysql # Check MySQL running
+python3 config_loader.py    # Test config loading
+```
+
+**NetworkManager conflict:**
+```bash
+sudo ./stop.sh && sudo ./start.sh  # Clean restart
+```
+
+## 📦 Auto-Start on Boot
+
+```bash
+sudo nano /etc/systemd/system/captive-portal.service
+```
+
+```ini
+[Unit]
+Description=Captive Portal
+After=network.target
+
+[Service]
+Type=forking
+User=root
+WorkingDirectory=/path/to/captiveKumanda
+ExecStart=/path/to/captiveKumanda/start.sh
+ExecStop=/path/to/captiveKumanda/stop.sh
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable captive-portal
+```
+
+## 🔐 Security
+
+```bash
+chmod 600 config.sh                 # Protect credentials
+echo "config.sh" >> .gitignore      # Don't commit passwords
+```
+
+## 📊 Requirements
+
+- Linux (Ubuntu/Debian/Raspberry Pi OS)
+- WiFi adapter with AP mode support
+- Root/sudo access
+- Python 3.x
+
+## 🔄 Workflow
+
+**Daily Use:** `sudo ./start.sh` → `sudo ./stop.sh`  
+**Config Change:** Edit `config.sh` → `sudo ./configure.sh` → `sudo ./start.sh`  
+**New Device:** `sudo ./install.sh` → `sudo ./start.sh`
