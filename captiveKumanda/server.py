@@ -12,6 +12,7 @@ import subprocess
 import sys
 import os
 from datetime import datetime
+import server_display  # Server-side on-screen notifications
 
 app = Flask(__name__)
 
@@ -94,6 +95,7 @@ def para_guncelle(eklenen_miktar):
         if shop_bakiye < eklenen_miktar:
             cursor.close()
             connection.close()
+            server_display.show_notification("LİMİT YETERSİZ. LİMİTİ ARTIRIN.")
             return {'success': False, 'message': 'LİMİT YETERSİZ. LİMİTİ ARTIRIN.'}
         
         # Update w_users table
@@ -129,6 +131,7 @@ def para_guncelle(eklenen_miktar):
         connection.close()
         
         print(f"Money loaded successfully: {eklenen_miktar} TL")
+        server_display.show_notification(f"{eklenen_miktar} TL YÜKLENDİ")
         return {'success': True, 'message': f'{eklenen_miktar} TL YÜKLENDİ', 'amount': eklenen_miktar}
         
     except mysql.connector.Error as error:
@@ -186,6 +189,7 @@ def para_sil():
         connection.close()
         
         print("Balance cleared successfully")
+        server_display.show_notification("SİLİNDİ")
         return {'success': True, 'message': 'SİLİNDİ', 'cleared_amount': user_balance}
         
     except mysql.connector.Error as error:
@@ -257,11 +261,13 @@ def toggle_brave():
         
         if brave_found:
             # Close Brave
+            server_display.show_notification("OYUN KAPATILIYOR...")
             os.system("pkill -f brave")
             print("Brave browser closed")
             return {'success': True, 'action': 'closed', 'message': 'OYUN KAPATILIYOR...'}
         else:
             # Open Brave
+            server_display.show_notification("İYİ EĞLENCELER...")
             subprocess.Popen([
                 "brave-browser", 
                 "--incognito", 
@@ -378,6 +384,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     PORT = args.port
+    
+    # Initialize server display for notifications
+    server_display.init_display()
     
     print("=" * 60)
     print("Captive Portal Gaming Kiosk Server")
