@@ -9,110 +9,276 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Configuration
-INTERFACE="wlan0"
-STATIC_IP="192.168.4.1"
-NETMASK="255.255.255.0"
+# Verbose logging
+VERBOSE=1  # Set to 0 to disable verbose output
+
+log_info() {
+    echo -e "${CYAN}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_debug() {
+    if [ "$VERBOSE" -eq 1 ]; then
+        echo -e "${BLUE}[DEBUG]${NC} $1"
+    fi
+}
+
+# Get script directory
 SERVICE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+log_debug "Script directory: $SERVICE_DIR"
+
+# Load configuration
+CONFIG_FILE="$SERVICE_DIR/config.sh"
+if [ ! -f "$CONFIG_FILE" ]; then
+    log_error "Configuration file not found: $CONFIG_FILE"
+    echo -e "Please create config.sh from the template"
+    exit 1
+fi
+
+# Source configuration
+log_debug "Loading configuration from: $CONFIG_FILE"
+source "$CONFIG_FILE"
+
+echo -e "\n${GREEN}=== Starting Captive Portal Hotspot ===${NC}\n"
+echo -e "${CYAN}Configuration:${NC}"
+echo -e "  Interface:    ${YELLOW}$INTERFACE${NC}"
+echo -e "  Static IP:    ${YELLOW}$STATIC_IP${NC}"
+echo -e "  SSID:         ${YELLOW}$SSID${NC}"
+echo -e "  Server Port:  ${YELLOW}$SERVER_PORT${NC}"
+echo ""
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
-   echo -e "${RED}Error: This script must be run as root (use sudo)${NC}"
+   log_error "This script must be run as root (use sudo)"
    exit 1
 fi
 
-echo -e "${GREEN}=== Starting Captive Portal Hotspot ===${NC}\n"
-
 # Check if required files exist
+log_info "Checking required files..."
 if [ ! -f "$SERVICE_DIR/hostapd.conf" ]; then
-    echo -e "${RED}Error: hostapd.conf not found${NC}"
+    log_error "hostapd.conf not found in $SERVICE_DIR"
     exit 1
 fi
+log_debug "✓ hostapd.conf found"
 
 if [ ! -f "$SERVICE_DIR/dnsmasq.conf" ]; then
-    echo -e "${RED}Error: dnsmasq.conf not found${NC}"
+    log_error "dnsmasq.conf not found in $SERVICE_DIR"
     exit 1
 fi
+log_debug "✓ dnsmasq.conf found"
 
 if [ ! -f "$SERVICE_DIR/server.py" ]; then
-    echo -e "${RED}Error: server.py not found${NC}"
+    log_error "server.py not found in $SERVICE_DIR"
+    exit 1
+fi
+log_debug "✓ server.py found"
+
+if [ ! -f "$SERVICE_DIR/portal.html" ]; then
+    log_error "portal.html not found in $SERVICE_DIR"
+    exit 1
+fi
+log_debug "✓ portal.html found"
+
+# Step 1: Check if interface exists
+echo -e "\n${YELLOW}[1/8]${NC} Checking interface $INTERFACE..."
+if ! ip link show "$INTERFACE" &>/dev/null; then
+    log_error "Interface $INTERFACE not found!"
+    echo -e "\n${YELLOW}Available interfaces:${NC}"
+    ip link show | grep -E "^[0-9]+:" | awk '{print "  - " $2}' | sed 's/://'
+    echo -e "\n${YELLOW}Hint:${NC} Run ./find_interface.sh to detect WiFi interfaces"
+    echo -e "      Then edit config.sh and set INTERFACE to your WiFi adapter"
+    exit 1
+fi
+log_success "Interface $INTERFACE exists"
+log_debug "Interface state: $(ip link show $INTERFACE | grep -o 'state [A-Z]*' | awk '{print $2}')"
+
+# Step 2: Stop NetworkManager management of wireless interface
+echo -e "\n${YELLOW}[2/8]${NC} Stopping NetworkManager on $INTERFACE..."
+log_debug "Running: nmcli device set $INTERFACE managed no"
+if nmcli device set $INTERFACE managed no 2>&1 | tee /tmp/nm_stop.log; then
+    log_success "NetworkManager stopped managing $INTERFACE"
+else
+    log_warning "Failed to stop NetworkManager (may not be a problem)"
+    log_debug "Output: $(cat /tmp/nm_stop.log)"
+fi
+sleep 1
+
+# Step 3: Bring down the interface
+echo -e "\n${YELLOW}[3/8]${NC} Bringing down interface $INTERFACE..."
+log_debug "Running: ip link set $INTERFACE down"
+if ip link set $INTERFACE down 2>&1 | tee /tmp/ifdown.log; then
+    log_success "Interface brought down"
+else
+    log_error "Failed to bring down interface"
+    cat /tmp/ifdown.log
+    exit 1
+fi
+sleep 1
+
+# Step 4: Configure static IP
+echo -e "\n${YELLOW}[4/8]${NC} Configuring static IP $STATIC_IP..."
+log_debug "Flushing existing addresses on $INTERFACE"
+ip addr flush dev $INTERFACE
+
+log_debug "Adding IP: $STATIC_IP/24 to $INTERFACE"
+if ip addr add $STATIC_IP/24 dev $INTERFACE 2>&1 | tee /tmp/ipaddr.log; then
+    log_success "IP address configured"
+else
+    log_error "Failed to configure IP address"
+    cat /tmp/ipaddr.log
     exit 1
 fi
 
-# Step 1: Stop NetworkManager management of wireless interface
-echo -e "${YELLOW}[1/7]${NC} Stopping NetworkManager on $INTERFACE..."
-nmcli device set $INTERFACE managed no
+log_debug "Bringing interface up"
+if ip link set $INTERFACE up 2>&1 | tee /tmp/ifup.log; then
+    log_success "Interface is up"
+    log_debug "Interface state: $(ip link show $INTERFACE | grep -o 'state [A-Z]*' | awk '{print $2}')"
+else
+    log_error "Failed to bring up interface"
+    cat /tmp/ifup.log
+    exit 1
+fi
 sleep 1
 
-# Step 2: Bring down the interface
-echo -e "${YELLOW}[2/7]${NC} Bringing down interface $INTERFACE..."
-ip link set $INTERFACE down
-sleep 1
+# Step 5: Start hostapd
+echo -e "\n${YELLOW}[5/8]${NC} Starting hostapd..."
+log_debug "Using config: $SERVICE_DIR/hostapd.conf"
+log_debug "Killing any existing hostapd processes"
+killall hostapd 2>/dev/null || true
 
-# Step 3: Configure static IP
-echo -e "${YELLOW}[3/7]${NC} Configuring static IP $STATIC_IP..."
-ip addr flush dev $INTERFACE
-ip addr add $STATIC_IP/24 dev $INTERFACE
-ip link set $INTERFACE up
-sleep 1
-
-# Step 4: Start hostapd
-echo -e "${YELLOW}[4/7]${NC} Starting hostapd..."
-hostapd -B "$SERVICE_DIR/hostapd.conf" > /tmp/hostapd.log 2>&1
-sleep 2
-
-# Check if hostapd is running
-if ! pgrep -x "hostapd" > /dev/null; then
-    echo -e "${RED}Error: hostapd failed to start. Check /tmp/hostapd.log${NC}"
-    # Restore interface
+log_debug "Running: hostapd -B $SERVICE_DIR/hostapd.conf"
+if hostapd -B "$SERVICE_DIR/hostapd.conf" > /tmp/hostapd.log 2>&1; then
+    sleep 2
+    if pgrep -x "hostapd" > /dev/null; then
+        log_success "hostapd started (PID: $(pgrep -x hostapd))"
+    else
+        log_error "hostapd process not found after start"
+        echo -e "\n${YELLOW}hostapd.log contents:${NC}"
+        cat /tmp/hostapd.log
+        nmcli device set $INTERFACE managed yes
+        exit 1
+    fi
+else
+    log_error "hostapd failed to start"
+    echo -e "\n${YELLOW}hostapd.log contents:${NC}"
+    cat /tmp/hostapd.log
+    echo -e "\n${YELLOW}Common issues:${NC}"
+    echo "  - Interface may not support AP mode"
+    echo "  - Driver issues with your WiFi adapter"
+    echo "  - Channel conflict (try changing CHANNEL in config.sh)"
     nmcli device set $INTERFACE managed yes
     exit 1
 fi
 
-# Step 5: Start dnsmasq
-echo -e "${YELLOW}[5/7]${NC} Starting dnsmasq..."
-dnsmasq -C "$SERVICE_DIR/dnsmasq.conf" --log-facility=/tmp/dnsmasq.log
-sleep 1
+# Step 6: Start dnsmasq
+echo -e "\n${YELLOW}[6/8]${NC} Starting dnsmasq..."
+log_debug "Using config: $SERVICE_DIR/dnsmasq.conf"
+log_debug "Killing any existing dnsmasq processes"
+killall dnsmasq 2>/dev/null || true
 
-# Check if dnsmasq is running
-if ! pgrep -x "dnsmasq" > /dev/null; then
-    echo -e "${RED}Error: dnsmasq failed to start. Check /tmp/dnsmasq.log${NC}"
-    # Cleanup
+log_debug "Running: dnsmasq -C $SERVICE_DIR/dnsmasq.conf"
+if dnsmasq -C "$SERVICE_DIR/dnsmasq.conf" --log-facility=/tmp/dnsmasq.log 2>&1 | tee /tmp/dnsmasq_start.log; then
+    sleep 1
+    if pgrep -x "dnsmasq" > /dev/null; then
+        log_success "dnsmasq started (PID: $(pgrep -x dnsmasq))"
+    else
+        log_error "dnsmasq process not found after start"
+        echo -e "\n${YELLOW}dnsmasq startup log:${NC}"
+        cat /tmp/dnsmasq_start.log
+        killall hostapd 2>/dev/null
+        nmcli device set $INTERFACE managed yes
+        exit 1
+    fi
+else
+    log_error "dnsmasq failed to start"
+    echo -e "\n${YELLOW}dnsmasq error output:${NC}"
+    cat /tmp/dnsmasq_start.log
+    echo -e "\n${YELLOW}Common issues:${NC}"
+    echo "  - Port 53 (DNS) may be in use by another service"
+    echo "  - Check with: sudo lsof -i :53"
     killall hostapd 2>/dev/null
     nmcli device set $INTERFACE managed yes
     exit 1
 fi
 
-# Step 6: Configure iptables for captive portal
-echo -e "${YELLOW}[6/7]${NC} Configuring iptables..."
-# Flush existing rules for captive portal
+# Step 7: Configure iptables for captive portal
+echo -e "\n${YELLOW}[7/8]${NC} Configuring iptables..."
+log_debug "Flushing existing iptables rules"
 iptables -t nat -F
 iptables -t mangle -F
 iptables -F
 
-# Redirect HTTP to web server
-iptables -t nat -A PREROUTING -i $INTERFACE -p tcp --dport 80 -j DNAT --to-destination $STATIC_IP:80
-iptables -t nat -A PREROUTING -i $INTERFACE -p tcp --dport 443 -j DNAT --to-destination $STATIC_IP:80
+log_debug "Adding NAT rules for HTTP/HTTPS redirect"
+iptables -t nat -A PREROUTING -i $INTERFACE -p tcp --dport 80 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT
+iptables -t nat -A PREROUTING -i $INTERFACE -p tcp --dport 443 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT
 
-# Allow traffic from/to the interface
+log_debug "Adding INPUT/OUTPUT rules"
 iptables -A INPUT -i $INTERFACE -j ACCEPT
 iptables -A OUTPUT -o $INTERFACE -j ACCEPT
 
-# Step 7: Start Python web server
-echo -e "${YELLOW}[7/7]${NC} Starting web server..."
+log_success "iptables configured"
+if [ "$VERBOSE" -eq 1 ]; then
+    echo -e "${BLUE}NAT rules:${NC}"
+    iptables -t nat -L PREROUTING -n | grep -v "^Chain" | grep -v "^target"
+fi
+
+# Step 8: Start Python web server
+echo -e "\n${YELLOW}[8/8]${NC} Starting web server..."
 cd "$SERVICE_DIR"
-# Run server on port 80 for captive portal (requires root which we already have)
-python3 server.py --port 80 > /tmp/portal-server.log 2>&1 &
-echo $! > /tmp/portal-server.pid
-sleep 1
+
+log_debug "Checking for Flask installation"
+if ! python3 -c "import flask" 2>/dev/null; then
+    log_error "Flask is not installed!"
+    echo -e "\n${YELLOW}Install Flask with:${NC}"
+    echo "  sudo ./install_deps.sh"
+    killall dnsmasq 2>/dev/null
+    killall hostapd 2>/dev/null
+    iptables -t nat -F
+    nmcli device set $INTERFACE managed yes
+    exit 1
+fi
+log_debug "Flask is installed"
+
+log_debug "Running: python3 server.py --port $SERVER_PORT"
+python3 server.py --port $SERVER_PORT > /tmp/portal-server.log 2>&1 &
+SERVER_PID=$!
+echo $SERVER_PID > /tmp/portal-server.pid
+log_debug "Server started with PID: $SERVER_PID"
+
+sleep 2
 
 # Check if server is running
-if ! kill -0 $(cat /tmp/portal-server.pid 2>/dev/null) 2>/dev/null; then
-    echo -e "${RED}Error: Web server failed to start. Check /tmp/portal-server.log${NC}"
-    echo -e "${YELLOW}Hint: If Flask is not installed, run: sudo pip3 install -r requirements.txt --break-system-packages${NC}"
-    # Cleanup
+if kill -0 $SERVER_PID 2>/dev/null; then
+    log_success "Web server is running (PID: $SERVER_PID)"
+    log_debug "Checking if server is listening on port $SERVER_PORT"
+    if ss -tuln | grep -q ":$SERVER_PORT "; then
+        log_success "Server is listening on port $SERVER_PORT"
+    else
+        log_warning "Server may not be listening on port $SERVER_PORT yet (still starting up)"
+    fi
+else
+    log_error "Web server failed to start"
+    echo -e "\n${YELLOW}Server log contents:${NC}"
+    cat /tmp/portal-server.log
+    echo -e "\n${YELLOW}Common issues:${NC}"
+    echo "  - Flask not installed: sudo ./install_deps.sh"
+    echo "  - Database connection error: check MySQL credentials in config.sh"
+    echo "  - Port $SERVER_PORT already in use: sudo lsof -i :$SERVER_PORT"
     killall dnsmasq 2>/dev/null
     killall hostapd 2>/dev/null
     iptables -t nat -F
@@ -121,12 +287,28 @@ if ! kill -0 $(cat /tmp/portal-server.pid 2>/dev/null) 2>/dev/null; then
 fi
 
 echo -e "\n${GREEN}✓ Captive Portal Hotspot is running!${NC}\n"
-echo -e "SSID: ${GREEN}CaptivePortal${NC}"
-echo -e "Password: ${GREEN}portal123${NC}"
-echo -e "Gateway IP: ${GREEN}$STATIC_IP${NC}"
-echo -e "\nClients will be redirected to the captive portal page automatically."
-echo -e "To stop the hotspot, run: ${YELLOW}sudo ./stop.sh${NC}\n"
-echo -e "Logs:"
-echo -e "  - hostapd: /tmp/hostapd.log"
-echo -e "  - dnsmasq: /tmp/dnsmasq.log"
-echo -e "  - web server: /tmp/portal-server.log"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${CYAN}Network Information:${NC}"
+echo -e "  SSID:        ${GREEN}$SSID${NC}"
+echo -e "  Password:    ${GREEN}$WPA_PASSPHRASE${NC}"
+echo -e "  Gateway IP:  ${GREEN}$STATIC_IP${NC}"
+echo -e "  Interface:   ${GREEN}$INTERFACE${NC}"
+echo -e ""
+echo -e "${CYAN}Process Information:${NC}"
+echo -e "  hostapd:     PID $(pgrep -x hostapd)"
+echo -e "  dnsmasq:     PID $(pgrep -x dnsmasq)"
+echo -e "  web server:  PID $SERVER_PID"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e ""
+echo -e "${GREEN}✓${NC} Clients will be redirected to the captive portal page automatically."
+echo -e "${GREEN}✓${NC} Connect to WiFi and the gaming kiosk will appear!"
+echo -e ""
+echo -e "To stop the hotspot:  ${YELLOW}sudo ../stop.sh${NC}"
+echo -e ""
+echo -e "${CYAN}Log Files:${NC}"
+echo -e "  hostapd:     /tmp/hostapd.log"
+echo -e "  dnsmasq:     /tmp/dnsmasq.log"
+echo -e "  web server:  /tmp/portal-server.log"
+echo -e ""
+echo -e "View logs live: ${YELLOW}tail -f /tmp/portal-server.log${NC}"
+echo ""
