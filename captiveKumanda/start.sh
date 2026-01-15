@@ -54,7 +54,24 @@ fi
 log_debug "Loading configuration from: $CONFIG_FILE"
 source "$CONFIG_FILE"
 
+
 echo -e "\n${GREEN}=== Starting Captive Portal Hotspot ===${NC}\n"
+
+# AUTOMATIC DISPLAY PERMISSION
+# We need to allow the 'root' user (us) to draw on the logged-in user's screen.
+# If we were started with sudo, we know who the real user is ($SUDO_USER).
+if [ -n "$SUDO_USER" ]; then
+    log_info "Granting X11 display permission for root (via $SUDO_USER)..."
+    # Run xhost as the normal user
+    # 'xhost +local:root' allows root to connect to the X server
+    sudo -u $SUDO_USER env DISPLAY=:0 xhost +local:root >/dev/null 2>&1 || true
+else
+    # Fallback if SUDO_USER is missing (e.g. run directly as root login)
+    # This might fail if we can't find the Xauthority, but it's worth a try.
+    export DISPLAY=:0
+    xhost +local:root >/dev/null 2>&1 || true
+fi
+
 echo -e "${CYAN}Configuration:${NC}"
 echo -e "  Interface:    ${YELLOW}$INTERFACE${NC}"
 echo -e "  Static IP:    ${YELLOW}$STATIC_IP${NC}"
@@ -220,10 +237,13 @@ fi
 
 # Step 7: Configure iptables for captive portal
 echo -e "\n${YELLOW}[7/8]${NC} Configuring iptables..."
-log_debug "Flushing existing iptables rules"
-iptables -t nat -F
-iptables -t mangle -F
-iptables -F
+log_debug "Removing old captive portal rules (if any)"
+# Instead of flushing ALL rules (iptables -F), we only remove our specific rules
+# This prevents breaking other services (Docker, local PHP server firewall, etc.)
+iptables -t nat -D PREROUTING -i $INTERFACE -p tcp --dport 80 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT 2>/dev/null || true
+iptables -t nat -D PREROUTING -i $INTERFACE -p tcp --dport 443 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT 2>/dev/null || true
+iptables -D INPUT -i $INTERFACE -j ACCEPT 2>/dev/null || true
+iptables -D OUTPUT -o $INTERFACE -j ACCEPT 2>/dev/null || true
 
 log_debug "Adding NAT rules for HTTP/HTTPS redirect"
 iptables -t nat -A PREROUTING -i $INTERFACE -p tcp --dport 80 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT

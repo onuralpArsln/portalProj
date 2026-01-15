@@ -270,6 +270,7 @@ def toggle_brave():
             server_display.show_notification("İYİ EĞLENCELER...")
             subprocess.Popen([
                 "brave-browser", 
+                "--no-sandbox",
                 "--incognito", 
                 "-new-window", 
                 "--start-fullscreen", 
@@ -385,6 +386,15 @@ if __name__ == "__main__":
     
     PORT = args.port
     
+    # -------------------------------------------------------------
+    # HOST CONFIGURATION: Set Display for GUI
+    # -------------------------------------------------------------
+    # Since we are running as a background service (likely root),
+    # we must explicitly tell Tkinter and Brave where the screen is.
+    if "DISPLAY" not in os.environ:
+        os.environ["DISPLAY"] = ":0"
+        print("Forced DISPLAY=:0 for GUI applications")
+
     # Initialize server display for notifications
     server_display.init_display()
     
@@ -412,4 +422,7 @@ if __name__ == "__main__":
     print("=" * 60)
     
     # Run Flask server
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+    # Bind only to the captive portal (WiFi) IP to avoid conflict with local PHP server on Port 80
+    host_ip = CONFIG.get('STATIC_IP', '192.168.4.1')
+    print(f"Binding to {host_ip}:{PORT}...")
+    app.run(host=host_ip, port=PORT, debug=False)

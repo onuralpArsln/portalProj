@@ -26,7 +26,7 @@ WPA_PASSPHRASE="portal123"
 CHANNEL="7"
 
 # Server Configuration
-SERVER_PORT="8080"  # Port 80 for captive portal (requires sudo)
+SERVER_PORT="8090"  # Port 80 for captive portal (requires sudo)
 
 # Database Configuration (for gaming kiosk)
 MYSQL_USER="fungames"
