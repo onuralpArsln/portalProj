@@ -12,8 +12,92 @@ import subprocess
 import sys
 import os
 from datetime import datetime
+import re
+import hashlib
 import server_display  # Server-side on-screen notifications
 import config_loader    # Load configuration from config.sh
+
+# ========================
+# Security Verification
+# ========================
+SALT = "your-product-name-v1"
+LICENSE_FILE = "security/dlI"  # Path to license file
+
+def run_cmd(cmd):
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except Exception:
+        return ""
+
+def get_macs():
+    try:
+        result = subprocess.run(
+            ["ip", "link"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        return sorted(re.findall(r"link/ether ([0-9a-f:]{17})", result.stdout))
+    except Exception:
+        return []
+
+def calculate_hardware_hash():
+    values = []
+    # Collect same hardware identifiers as secgen.py
+    system_uuid = run_cmd(["dmidecode", "-s", "system-uuid"])
+    baseboard_serial = run_cmd(["dmidecode", "-s", "baseboard-serial-number"])
+    product_uuid = run_cmd(["cat", "/sys/class/dmi/id/product_uuid"])
+    macs = get_macs()
+
+    for v in [system_uuid, baseboard_serial, product_uuid]:
+        if v:
+            values.append(v.strip())
+    values.extend(macs)
+
+    raw = "|".join(values)
+    return hashlib.sha256((SALT + "|" + raw).encode()).hexdigest()
+
+def verify_license():
+    # Only verify if we are running as root (needed for dmidecode)
+    # If not root, we might be in dev mode or unable to verify, skip or fail based on policy
+    # But user asked for check.
+    if os.geteuid() != 0:
+        print("Warning: Not running as root, cannot verify hardware license.")
+        # For now, we might let it pass or fail. 
+        # But 'dmidecode' needs root. Let's assume we must be root.
+        pass
+
+    try:
+        # Look for license file in the same directory complexity
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        license_path = os.path.join(script_dir, LICENSE_FILE)
+        
+        if not os.path.exists(license_path):
+             return False
+             
+        with open(license_path, "r") as f:
+            stored_hash = f.read().strip()
+            
+        current_hash = calculate_hardware_hash()
+        return current_hash == stored_hash
+    except Exception as e:
+        print(f"Verification error: {e}")
+        return False
+
+# Perform Verification
+if not verify_license():
+    print("\n" + "!"*40)
+    print("arakci ayip sana")
+    print("!"*40 + "\n")
+    sys.exit(1)
 
 app = Flask(__name__)
 
