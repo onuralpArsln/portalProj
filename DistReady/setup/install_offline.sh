@@ -119,6 +119,35 @@ echo -e "\n${YELLOW}[5/5]${NC} Running auto-configuration..."
 cd "$PROJECT_ROOT"
 ./configure.sh
 
+# 6. Generate Device Fingerprint & License
+echo -e "\n${YELLOW}[6/7]${NC} Generating device license..."
+
+if [ -f "$PROJECT_ROOT/security/secgen.py" ]; then
+    # Run the generator from its directory
+    cd "$PROJECT_ROOT/security"
+    python3 secgen.py
+    
+    if [ -f "dlI" ]; then
+         echo -e "  ${GREEN}✓${NC} License generated (dlI)"
+    else
+         echo -e "  ${RED}✗ License generation failed${NC}"
+    fi
+    cd "$PROJECT_ROOT"
+else
+    echo -e "${YELLOW}Warning: secgen.py not found in security/${NC}"
+fi
+
+# 7. Lock Configurations
+echo -e "\n${YELLOW}[7/7]${NC} Locking configuration files..."
+if command -v chattr &> /dev/null; then
+    chattr +i "$PROJECT_ROOT/config.sh"
+    chattr +i "$PROJECT_ROOT/hostapd.conf"
+    chattr +i "$PROJECT_ROOT/dnsmasq.conf"
+    echo -e "  ${GREEN}✓${NC} Configuration files are now immutable (locked)"
+else
+    echo -e "${YELLOW}Warning: chattr command not found, skipping file locking${NC}"
+fi
+
 echo -e "\n${BLUE}=======================================${NC}"
 echo -e "${GREEN}✓ Setup Complete!${NC}"
 echo -e "${BLUE}=======================================${NC}"
