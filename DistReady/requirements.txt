@@ -1,4 +1,0 @@
-flask==2.3.0
-mysql-connector-python==8.0.33
-psutil==5.9.5
-pyinstaller==5.13.0
