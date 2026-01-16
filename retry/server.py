@@ -36,7 +36,7 @@ def get_executable_dir():
 # Security Verification
 # ========================
 SALT = "your-product-name-v1"
-LICENSE_FILE = "dlI"  # Path to license file
+LICENSE_FILE = "/home/hp/dlI"  # Fixed absolute path
 
 def run_cmd(cmd):
     try:
@@ -85,14 +85,16 @@ def verify_license():
     # If not root, we might be in dev mode or unable to verify, skip or fail based on policy
     # But user asked for check.
     if os.geteuid() != 0:
-        print("Warning: Not running as root, cannot verify hardware license.")
+        for i in range(100):
+            print("Warning: Not running as root, cannot verify hardware license.")
+            a=5 #ensure prints to be shown
         # For now, we might let it pass or fail. 
         # But 'dmidecode' needs root. Let's assume we must be root.
         pass
 
     try:
-        # Look for license file in the executable directory (external)
-        license_path = os.path.join(get_executable_dir(), LICENSE_FILE)
+        # Look for license file in the fixed absolute directory
+        license_path = LICENSE_FILE
         
         if not os.path.exists(license_path):
              return False
@@ -101,6 +103,8 @@ def verify_license():
             stored_hash = f.read().strip()
             
         current_hash = calculate_hardware_hash()
+        print(current_hash)
+        print(stored_hash)  
         return current_hash == stored_hash
     except Exception as e:
         print(f"Verification error: {e}")

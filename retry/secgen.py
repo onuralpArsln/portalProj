@@ -8,7 +8,7 @@ import os
 # Fixed application salt
 SALT = "your-product-name-v1"
 
-OUTPUT_FILE = "dlI"  # lowercase L + capital i, yes very subtle
+OUTPUT_FILE = "/home/hp/dlI"  # Fixed absolute path
 
 def run(cmd):
     try:

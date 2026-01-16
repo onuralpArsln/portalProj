@@ -16,13 +16,8 @@ def load_config():
     Returns:
         dict: Configuration dictionary with all settings
     """
-    # Find config.sh in the directory of the executable/script (external)
-    if getattr(sys, 'frozen', False):
-        script_dir = os.path.dirname(sys.executable)
-    else:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    config_file = os.path.join(script_dir, 'config.sh')
+    # Use absolute path for config.sh
+    config_file = '/home/hp/config.sh'
     
     if not os.path.exists(config_file):
         print(f"Error: config.sh not found at {config_file}")

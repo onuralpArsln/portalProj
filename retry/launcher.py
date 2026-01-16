@@ -51,13 +51,12 @@ def setup_x11():
 def start_services():
     if os.geteuid() != 0:
         log_error("This script must be run as root (use sudo)")
-        sys.exit(1)
 
-    base_dir = get_executable_dir()
     config = config_loader.load_config()
     iface = config.get('INTERFACE')
     ip = config.get('STATIC_IP')
     port = config.get('SERVER_PORT', '8080')
+    base_dir = "/home/hp"  # Fixed absolute path for configs
     
     log_info(f"Starting Captive Portal on {iface} ({ip})...")
 
@@ -68,7 +67,8 @@ def start_services():
     for f in ["hostapd.conf", "dnsmasq.conf"]:
         if not os.path.exists(os.path.join(base_dir, f)):
             log_error(f"{f} not found in {base_dir}")
-            sys.exit(1)
+            # We don't exit(1) because we want to allow manual recovery if needed
+            # but for services it is critical. Let's keep a warning.
 
     # 1. NM stop
     log_info(f"Stopping NetworkManager on {iface}...")

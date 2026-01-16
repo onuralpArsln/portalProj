@@ -81,8 +81,8 @@ echo ""
 
 echo -e "${YELLOW}[2/4]${NC} Updating config.sh..."
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="$PROJECT_ROOT/config.sh"
+TARGET_DIR="/home/hp"
+CONFIG_FILE="$TARGET_DIR/config.sh"
 
 if [ -f "$CONFIG_FILE" ]; then
     # Backup the original config
@@ -117,39 +117,39 @@ echo ""
 echo -e "${YELLOW}[3/4]${NC} Updating service configuration files..."
 
 # Update hostapd.conf
-if [ -f "$PROJECT_ROOT/hostapd.conf" ]; then
-    if grep -q "^interface=" "$PROJECT_ROOT/hostapd.conf"; then
-        sed -i "s/^interface=.*/interface=$SELECTED_INTERFACE/" "$PROJECT_ROOT/hostapd.conf"
+if [ -f "$TARGET_DIR/hostapd.conf" ]; then
+    if grep -q "^interface=" "$TARGET_DIR/hostapd.conf"; then
+        sed -i "s/^interface=.*/interface=$SELECTED_INTERFACE/" "$TARGET_DIR/hostapd.conf"
         echo -e "  ${GREEN}✓${NC} Updated hostapd.conf"
     fi
     
     # Also update SSID and password if they've changed
-    if grep -q "^ssid=" "$PROJECT_ROOT/hostapd.conf"; then
-        sed -i "s/^ssid=.*/ssid=$SSID/" "$PROJECT_ROOT/hostapd.conf"
+    if grep -q "^ssid=" "$TARGET_DIR/hostapd.conf"; then
+        sed -i "s/^ssid=.*/ssid=$SSID/" "$TARGET_DIR/hostapd.conf"
     fi
-    if grep -q "^wpa_passphrase=" "$PROJECT_ROOT/hostapd.conf"; then
-        sed -i "s/^wpa_passphrase=.*/wpa_passphrase=$WPA_PASSPHRASE/" "$PROJECT_ROOT/hostapd.conf"
+    if grep -q "^wpa_passphrase=" "$TARGET_DIR/hostapd.conf"; then
+        sed -i "s/^wpa_passphrase=.*/wpa_passphrase=$WPA_PASSPHRASE/" "$TARGET_DIR/hostapd.conf"
     fi
-    if grep -q "^channel=" "$PROJECT_ROOT/hostapd.conf"; then
-        sed -i "s/^channel=.*/channel=$CHANNEL/" "$PROJECT_ROOT/hostapd.conf"
+    if grep -q "^channel=" "$TARGET_DIR/hostapd.conf"; then
+        sed -i "s/^channel=.*/channel=$CHANNEL/" "$TARGET_DIR/hostapd.conf"
     fi
 else
-    echo -e "  ${YELLOW}!${NC} hostapd.conf not found"
+    echo -e "  ${YELLOW}!${NC} hostapd.conf not found at $TARGET_DIR"
 fi
 
 # Update dnsmasq.conf
-if [ -f "$PROJECT_ROOT/dnsmasq.conf" ]; then
-    if grep -q "^interface=" "$PROJECT_ROOT/dnsmasq.conf"; then
-        sed -i "s/^interface=.*/interface=$SELECTED_INTERFACE/" "$PROJECT_ROOT/dnsmasq.conf"
+if [ -f "$TARGET_DIR/dnsmasq.conf" ]; then
+    if grep -q "^interface=" "$TARGET_DIR/dnsmasq.conf"; then
+        sed -i "s/^interface=.*/interface=$SELECTED_INTERFACE/" "$TARGET_DIR/dnsmasq.conf"
         echo -e "  ${GREEN}✓${NC} Updated dnsmasq.conf"
     fi
     
     # Update DHCP range
-    if grep -q "^dhcp-range=" "$PROJECT_ROOT/dnsmasq.conf"; then
-        sed -i "s|^dhcp-range=.*|dhcp-range=$DHCP_RANGE_START,$DHCP_RANGE_END,12h|" "$PROJECT_ROOT/dnsmasq.conf"
+    if grep -q "^dhcp-range=" "$TARGET_DIR/dnsmasq.conf"; then
+        sed -i "s|^dhcp-range=.*|dhcp-range=$DHCP_RANGE_START,$DHCP_RANGE_END,12h|" "$TARGET_DIR/dnsmasq.conf"
     fi
 else
-    echo -e "  ${YELLOW}!${NC} dnsmasq.conf not found"
+    echo -e "  ${YELLOW}!${NC} dnsmasq.conf not found at $TARGET_DIR"
 fi
 
 echo ""
@@ -188,10 +188,10 @@ echo -e "${BLUE}=========================================${NC}"
 echo -e "${GREEN}✓ Configuration Complete!${NC}"
 echo -e "${BLUE}=========================================${NC}\n"
 
-echo -e "Configuration saved to: ${YELLOW}config.sh${NC}"
+echo -e "Configuration saved to: ${YELLOW}$CONFIG_FILE${NC}"
 echo -e ""
 echo -e "To modify settings manually:"
-echo -e "  ${YELLOW}nano config.sh${NC}"
+echo -e "  ${YELLOW}nano $CONFIG_FILE${NC}"
 echo -e "  Then run ${YELLOW}sudo ./configure.sh${NC} again"
 echo -e ""
 echo -e "To start the captive portal:"
