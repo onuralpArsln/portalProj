@@ -129,14 +129,30 @@ echo -e "  ${GREEN}✓${NC} generated dnsmasq.conf"
 
 # 4. Set Permissions
 echo -e "\n${YELLOW}[4/5]${NC} Setting permissions..."
-chmod +x "$PROJECT_ROOT/"*.sh
-chmod +x "$PROJECT_ROOT/"*.py
-echo -e "  ${GREEN}✓${NC} Scripts became executable"
+# Make shell scripts executable (if any exist)
+if ls "$PROJECT_ROOT/"*.sh 1> /dev/null 2>&1; then
+    chmod +x "$PROJECT_ROOT/"*.sh
+    echo -e "  ${GREEN}✓${NC} Shell scripts made executable"
+fi
+# Make Python scripts executable (if any exist in root - subdirectories handled separately)
+if ls "$PROJECT_ROOT/"*.py 1> /dev/null 2>&1; then
+    chmod +x "$PROJECT_ROOT/"*.py
+    echo -e "  ${GREEN}✓${NC} Python scripts made executable"
+fi
+# Make Python scripts in security directory executable
+if [ -d "$PROJECT_ROOT/security" ] && ls "$PROJECT_ROOT/security/"*.py 1> /dev/null 2>&1; then
+    chmod +x "$PROJECT_ROOT/security/"*.py
+    echo -e "  ${GREEN}✓${NC} Security scripts made executable"
+fi
 
-# 5. Run Auto-Configuration
+# 5. Run Auto-Configuration (skip if configure.sh doesn't exist - bundled executable doesn't need it)
 echo -e "\n${YELLOW}[5/5]${NC} Running auto-configuration..."
 cd "$PROJECT_ROOT"
-./configure.sh
+if [ -f "./configure.sh" ]; then
+    ./configure.sh
+else
+    echo -e "  ${YELLOW}⚠${NC} configure.sh not found (skipped - not needed for bundled executable)"
+fi
 
 # 6. Generate Device Fingerprint & License
 echo -e "\n${YELLOW}[6/7]${NC} Generating device license..."
