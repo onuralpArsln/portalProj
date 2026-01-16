@@ -17,6 +17,21 @@ import hashlib
 import server_display  # Server-side on-screen notifications
 import config_loader    # Load configuration from config.sh
 
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
+def get_executable_dir():
+    """Get the directory where the executable or script is located"""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
 # ========================
 # Security Verification
 # ========================
@@ -76,9 +91,8 @@ def verify_license():
         pass
 
     try:
-        # Look for license file in the same directory complexity
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        license_path = os.path.join(script_dir, LICENSE_FILE)
+        # Look for license file in the executable directory (external)
+        license_path = os.path.join(get_executable_dir(), LICENSE_FILE)
         
         if not os.path.exists(license_path):
              return False
@@ -92,23 +106,29 @@ def verify_license():
         print(f"Verification error: {e}")
         return False
 
-# Perform Verification
-if not verify_license():
-    print("\n" + "!"*40)
-    print("arakci ayip sana")
-    print("License verification failed - Shutting down system")
-    print("!"*40 + "\n")
+def init_server():
+    """Initialize server components (License, Display, Config)"""
+    # 1. Verify License
+    if not verify_license():
+        print("\n" + "!"*40)
+        print("arakci ayip sana")
+        print("License verification failed - Shutting down system")
+        print("!"*40 + "\n")
+        
+        try:
+            subprocess.run(["shutdown", "-h", "now"], check=False)
+        except Exception as e:
+            print(f"Shutdown command failed: {e}")
+        sys.exit(1)
+
+    # 2. Initialize Display
+    print("Initializing server display...")
+    server_display.init_display()
     
-    # Shutdown the device to prevent unauthorized use
-    try:
-        # Use subprocess to execute shutdown command
-        # -h now: halt (shutdown) now
-        subprocess.run(["shutdown", "-h", "now"], check=False)
-    except Exception as e:
-        print(f"Shutdown command failed: {e}")
-    
-    # Exit anyway in case shutdown fails
-    sys.exit(1)
+    # 3. Log resource paths
+    print(f"Portal page location: {PORTAL_PAGE}")
+    if not os.path.exists(PORTAL_PAGE):
+        print(f"WARNING: Portal page NOT FOUND at {PORTAL_PAGE}")
 
 app = Flask(__name__)
 
@@ -117,7 +137,7 @@ print("Loading configuration from config.sh...")
 CONFIG = config_loader.load_config()
 
 # Configuration
-PORTAL_PAGE = "portal.html"
+PORTAL_PAGE = get_resource_path("portal.html")
 
 # MySQL Configuration (loaded from config.sh)
 MYSQL_CONFIG = config_loader.get_mysql_config(CONFIG)
@@ -598,9 +618,7 @@ def catch_all(path):
 
 if __name__ == "__main__":
     # Check if portal page exists
-    if not os.path.exists(PORTAL_PAGE):
-        print(f"Error: {PORTAL_PAGE} not found in current directory")
-        sys.exit(1)
+    init_server()
     
     # Port configuration
     # Use port 8080 by default (no sudo needed)
