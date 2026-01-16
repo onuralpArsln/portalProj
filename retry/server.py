@@ -124,10 +124,29 @@ MYSQL_CONFIG = config_loader.get_mysql_config(CONFIG)
 USER_ID = config_loader.get_user_id(CONFIG)
 SHOP_ID = config_loader.get_shop_id(CONFIG)
 
-# Brave Browser Configuration
+# Gaming Configuration
 GAME_URL = "https://fungames.com/specauth/293?token=4wA52wvxGjmwtOfvQ29F2T4RJT5P65iiFMIfc4Qg8WwRqbp10wNL5W2y5ezS4dBq"
 
+def screensaver_exists() -> bool:
+    """Check if the screensaver/music script exists"""
+    return os.path.isfile("/home/hp/Müzik/screensaver.sh")
 
+def toggle_music_logic():
+    """Toggle music by renaming the screensaver script"""
+    path_active = "/home/hp/Müzik/screensaver.sh"
+    path_inactive = "/home/hp/Müzik/creensaver.sh"
+    
+    try:
+        if os.path.exists(path_active):
+            os.rename(path_active, path_inactive)
+            return {'success': True, 'message': 'Müzik Kapatıldı'}
+        elif os.path.exists(path_inactive):
+            os.rename(path_inactive, path_active)
+            return {'success': True, 'message': 'Müzik Açıldı'}
+        else:
+            return {'success': False, 'message': 'Müzik dosyası bulunamadı!'}
+    except Exception as e:
+        return {'success': False, 'message': f'Hata: {str(e)}'}
 
 # ========================
 # Database Functions
@@ -498,6 +517,23 @@ def api_kazanc():
     """Get earnings/profit data"""
     result = get_kazanc()
 
+    if result['success']:
+        return jsonify(result)
+    else:
+        return jsonify(result), 500
+
+
+@app.route('/api/music_status', methods=['GET'])
+def api_music_status():
+    """Check if music (screensaver) script exists"""
+    exists = screensaver_exists()
+    return jsonify({'success': True, 'exists': exists})
+
+
+@app.route('/api/toggle_music', methods=['POST'])
+def api_toggle_music():
+    """Toggle music (screensaver) file renaming"""
+    result = toggle_music_logic()
     if result['success']:
         return jsonify(result)
     else:

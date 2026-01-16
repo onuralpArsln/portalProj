@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -64,9 +65,12 @@
         }
 
         @keyframes pulse-glow {
-            0%, 100% {
+
+            0%,
+            100% {
                 box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
             }
+
             50% {
                 box-shadow: 0 10px 40px rgba(255, 215, 0, 0.6);
             }
@@ -184,8 +188,25 @@
             background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
         }
 
+        .btn-music {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+            color: white;
+            grid-column: span 2;
+        }
+
+        .btn-music.active {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-music.inactive {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+        }
+
         .custom-amount {
             display: flex;
+            flex-direction: column;
             gap: 10px;
             margin-bottom: 30px;
         }
@@ -303,8 +324,13 @@
         }
 
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         @media (max-width: 768px) {
@@ -325,7 +351,8 @@
                 padding: 20px 15px;
             }
 
-            .btn-game, .btn-kazanc {
+            .btn-game,
+            .btn-kazanc {
                 grid-column: span 1;
             }
 
@@ -336,6 +363,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -381,6 +409,9 @@
                 📊 Kazancı Göster
             </button>
         </div>
+        <button class="btn btn-music" onclick="toggleMusic()">
+            🎵 Müzik
+        </button>
     </div>
 
     <!-- Notification Toast -->
@@ -405,15 +436,19 @@
     <script>
         // Auto-refresh balance every 2 seconds
         setInterval(updateBalance, 2000);
-        
-        // Initial balance load
+
+        // Auto-refresh music status every 5 seconds
+        setInterval(updateMusicStatus, 5000);
+
+        // Initial load
         updateBalance();
+        updateMusicStatus();
 
         async function updateBalance() {
             try {
                 const response = await fetch('/api/balance');
                 const data = await response.json();
-                
+
                 if (data.success) {
                     document.getElementById('balance').textContent = formatNumber(data.balance);
                 }
@@ -425,7 +460,7 @@
         async function loadMoney(amount) {
             try {
                 showLoading();
-                
+
                 const response = await fetch('/api/yukle', {
                     method: 'POST',
                     headers: {
@@ -433,16 +468,16 @@
                     },
                     body: JSON.stringify({ amount: amount })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showNotification(data.message);
                     updateBalance();
                 } else {
                     showNotification(data.message);
                 }
-                
+
             } catch (error) {
                 showNotification('Hata: ' + error.message);
             }
@@ -451,12 +486,12 @@
         async function loadCustomAmount() {
             const input = document.getElementById('customAmount');
             const amount = parseInt(input.value);
-            
+
             if (!amount || amount <= 0) {
                 showNotification('Geçerli bir miktar girin!');
                 return;
             }
-            
+
             await loadMoney(amount);
             input.value = '';
         }
@@ -465,23 +500,23 @@
             if (!confirm('Bakiyeyi silmek istediğinizden emin misiniz?')) {
                 return;
             }
-            
+
             try {
                 showLoading();
-                
+
                 const response = await fetch('/api/sil', {
                     method: 'POST'
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showNotification(data.message);
                     updateBalance();
                 } else {
                     showNotification(data.message);
                 }
-                
+
             } catch (error) {
                 showNotification('Hata: ' + error.message);
             }
@@ -490,19 +525,19 @@
         async function toggleGame() {
             try {
                 showLoading();
-                
+
                 const response = await fetch('/api/toggle_game', {
                     method: 'POST'
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showNotification(data.message);
                 } else {
                     showNotification(data.message);
                 }
-                
+
             } catch (error) {
                 showNotification('Hata: ' + error.message);
             }
@@ -512,7 +547,7 @@
             try {
                 const response = await fetch('/api/kazanc');
                 const data = await response.json();
-                
+
                 if (data.success) {
                     document.getElementById('kalanLimit').textContent = formatNumber(data.kalan_limit) + ' ₺';
                     document.getElementById('netKazanc').textContent = formatNumber(data.net_kazanc) + ' ₺';
@@ -520,7 +555,7 @@
                 } else {
                     showNotification(data.message);
                 }
-                
+
             } catch (error) {
                 showNotification('Hata: ' + error.message);
             }
@@ -534,7 +569,7 @@
             const notification = document.getElementById('notification');
             notification.textContent = message;
             notification.classList.add('show');
-            
+
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 1500);
@@ -548,31 +583,71 @@
             if (num === null || num === undefined) {
                 return '0,00';
             }
-            
+
             const formatted = parseFloat(num).toFixed(2);
             const parts = formatted.split('.');
             const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             const decimalPart = parts[1] || '00';
-            
+
             return integerPart + ',' + decimalPart;
         }
 
         // Close modal when clicking outside
-        document.getElementById('earningsModal').addEventListener('click', function(e) {
+        document.getElementById('earningsModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeEarningsModal();
             }
         });
 
         // Allow Enter key to load custom amount
-        document.getElementById('customAmount').addEventListener('keypress', function(e) {
+        document.getElementById('customAmount').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 loadCustomAmount();
             }
         });
 
+        async function updateMusicStatus() {
+            try {
+                const response = await fetch('/api/music_status');
+                const data = await response.json();
+
+                const musicBtn = document.querySelector('.btn-music');
+                if (data.success) {
+                    if (data.exists) {
+                        musicBtn.textContent = '🎵 Müzik Aktif';
+                        musicBtn.classList.add('active');
+                        musicBtn.classList.remove('inactive');
+                    } else {
+                        musicBtn.textContent = '🎵 Müzik Aktif Değil';
+                        musicBtn.classList.add('inactive');
+                        musicBtn.classList.remove('active');
+                    }
+                }
+            } catch (error) {
+                console.error('Music status update error:', error);
+            }
+        }
+
+        async function toggleMusic() {
+            try {
+                showLoading();
+                const response = await fetch('/api/toggle_music', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification(data.message);
+                    updateMusicStatus();
+                } else {
+                    showNotification(data.message);
+                }
+            } catch (error) {
+                showNotification('Hata: ' + error.message);
+            }
+        }
+
         console.log('Gaming Kiosk Control Panel Loaded');
         console.log('Connected at:', new Date().toISOString());
     </script>
 </body>
+
 </html>
