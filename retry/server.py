@@ -148,6 +148,22 @@ def toggle_music_logic():
     except Exception as e:
         return {'success': False, 'message': f'Hata: {str(e)}'}
 
+def manage_bak_file(balance):
+    """Create or delete bak.txt based on balance"""
+    path = "/home/hp/Müzik/bak.txt"
+    try:
+        if balance > 0:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            # Always write balance to keep it up to date
+            with open(path, "w") as f:
+                f.write(str(balance))
+        else:
+            if os.path.exists(path):
+                os.remove(path)
+    except Exception as e:
+        print(f"Error managing bak.txt: {e}")
+
 # ========================
 # Database Functions
 # ========================
@@ -178,6 +194,10 @@ def get_current_balance():
         cursor.close()
         connection.close()
         
+        # Manage bak.txt based on balance
+        if balance is not None:
+            manage_bak_file(balance)
+            
         return balance
         
     except Exception as e:
@@ -244,6 +264,9 @@ def para_guncelle(eklenen_miktar):
         cursor.close()
         connection.close()
         
+        # Immediate update for bak.txt via get_current_balance
+        get_current_balance()
+            
         print(f"Money loaded successfully: {eklenen_miktar} TL")
         server_display.show_notification(f"{eklenen_miktar} TL YÜKLENDİ")
         return {'success': True, 'message': f'{eklenen_miktar} TL YÜKLENDİ', 'amount': eklenen_miktar}
@@ -301,6 +324,9 @@ def para_sil():
         connection.commit()
         cursor.close()
         connection.close()
+        
+        # Immediate removal for bak.txt
+        manage_bak_file(0)
         
         print("Balance cleared successfully")
         server_display.show_notification("SİLİNDİ")
