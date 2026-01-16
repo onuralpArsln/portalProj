@@ -240,14 +240,40 @@ echo -e "\n${YELLOW}[7/8]${NC} Configuring iptables..."
 log_debug "Removing old captive portal rules (if any)"
 # Instead of flushing ALL rules (iptables -F), we only remove our specific rules
 # This prevents breaking other services (Docker, local PHP server firewall, etc.)
+
+# Clean up ALL old rules including legacy HTTPS redirect that may cause CONNECTION_REFUSED
 iptables -t nat -D PREROUTING -i $INTERFACE -p tcp --dport 80 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT 2>/dev/null || true
 iptables -t nat -D PREROUTING -i $INTERFACE -p tcp --dport 443 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT 2>/dev/null || true
+iptables -D INPUT -i $INTERFACE -p tcp --dport 80 -j ACCEPT 2>/dev/null || true
+iptables -D INPUT -i $INTERFACE -p udp --dport 443 -j REJECT 2>/dev/null || true
+iptables -D INPUT -i $INTERFACE -p udp --dport 443 -j REJECT --reject-with icmp-port-unreachable 2>/dev/null || true
+iptables -D INPUT -i $INTERFACE -p tcp --dport 443 -j REJECT 2>/dev/null || true
+iptables -D INPUT -i $INTERFACE -p tcp --dport 443 -j REJECT --reject-with tcp-reset 2>/dev/null || true
+iptables -D FORWARD -i $INTERFACE -p udp --dport 443 -j REJECT 2>/dev/null || true
 iptables -D INPUT -i $INTERFACE -j ACCEPT 2>/dev/null || true
 iptables -D OUTPUT -o $INTERFACE -j ACCEPT 2>/dev/null || true
 
-log_debug "Adding NAT rules for HTTP/HTTPS redirect"
+log_debug "Adding high-priority DNS rule (critical for captive portal)"
+# DNS (port 53) must be accepted with HIGH priority to ensure captive portal detection works
+# Using -I (insert) places this at the TOP of the INPUT chain before any other rules
+# This prevents DNS queries from being blocked by other rules
+iptables -I INPUT -i $INTERFACE -p udp --dport 53 -j ACCEPT
+iptables -I INPUT -i $INTERFACE -p tcp --dport 53 -j ACCEPT
+
+log_debug "Blocking QUIC protocol (UDP 443) to prevent ERR_QUIC_PROTOCOL_ERROR"
+# QUIC uses UDP 443 - reject immediately so Chrome falls back faster
+# Using REJECT here is fine because QUIC fallback to HTTPS is fast
+iptables -A INPUT -i $INTERFACE -p udp --dport 443 -j REJECT
+
+# NOTE: We intentionally do NOT block/reject TCP 443 (HTTPS)
+# Letting HTTPS timeout naturally (vs rejecting) gives better captive portal detection:
+# - REJECT causes browser to show ERR_CONNECTION_REFUSED
+# - Browsers interpret REJECT as "server actively refuses" not "captive portal"
+# - Natural timeout triggers proper HTTP fallback on most devices
+
+log_debug "Adding NAT rule for HTTP redirect"
+# Redirect all HTTP traffic to our portal server
 iptables -t nat -A PREROUTING -i $INTERFACE -p tcp --dport 80 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT
-iptables -t nat -A PREROUTING -i $INTERFACE -p tcp --dport 443 -j DNAT --to-destination $STATIC_IP:$SERVER_PORT
 
 log_debug "Adding INPUT/OUTPUT rules"
 iptables -A INPUT -i $INTERFACE -j ACCEPT
@@ -255,8 +281,10 @@ iptables -A OUTPUT -o $INTERFACE -j ACCEPT
 
 log_success "iptables configured"
 if [ "$VERBOSE" -eq 1 ]; then
-    echo -e "${BLUE}NAT rules:${NC}"
-    iptables -t nat -L PREROUTING -n | grep -v "^Chain" | grep -v "^target"
+    echo -e "${BLUE}Firewall rules:${NC}"
+    echo "  - UDP 443 (QUIC): REJECT (prevents ERR_QUIC_PROTOCOL_ERROR)"
+    echo "  - TCP 443 (HTTPS): Not blocked (natural timeout triggers HTTP fallback)"
+    echo "  - TCP 80 (HTTP): ACCEPT + NAT to $STATIC_IP:$SERVER_PORT"
 fi
 
 # Step 8: Start Python web server

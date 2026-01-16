@@ -141,13 +141,41 @@ fi
 if [ -f "$PROJECT_ROOT/dnsmasq.conf" ]; then
     if grep -q "^interface=" "$PROJECT_ROOT/dnsmasq.conf"; then
         sed -i "s/^interface=.*/interface=$SELECTED_INTERFACE/" "$PROJECT_ROOT/dnsmasq.conf"
-        echo -e "  ${GREEN}✓${NC} Updated dnsmasq.conf"
+        echo -e "  ${GREEN}✓${NC} Updated dnsmasq.conf interface"
     fi
-    
+
+    # Update listen-address to match STATIC_IP
+    if grep -q "^listen-address=" "$PROJECT_ROOT/dnsmasq.conf"; then
+        sed -i "s/^listen-address=.*/listen-address=$STATIC_IP/" "$PROJECT_ROOT/dnsmasq.conf"
+        echo -e "  ${GREEN}✓${NC} Updated dnsmasq.conf listen-address"
+    fi
+
     # Update DHCP range
     if grep -q "^dhcp-range=" "$PROJECT_ROOT/dnsmasq.conf"; then
         sed -i "s|^dhcp-range=.*|dhcp-range=$DHCP_RANGE_START,$DHCP_RANGE_END,12h|" "$PROJECT_ROOT/dnsmasq.conf"
     fi
+
+    # Update DHCP gateway option
+    if grep -q "^dhcp-option=3," "$PROJECT_ROOT/dnsmasq.conf"; then
+        sed -i "s|^dhcp-option=3,.*|dhcp-option=3,$STATIC_IP|" "$PROJECT_ROOT/dnsmasq.conf"
+    fi
+
+    # Update DHCP DNS option
+    if grep -q "^dhcp-option=6," "$PROJECT_ROOT/dnsmasq.conf"; then
+        sed -i "s|^dhcp-option=6,.*|dhcp-option=6,$STATIC_IP|" "$PROJECT_ROOT/dnsmasq.conf"
+    fi
+
+    # Update Captive Portal URI (RFC 8910)
+    if grep -q "^dhcp-option=114," "$PROJECT_ROOT/dnsmasq.conf"; then
+        sed -i "s|^dhcp-option=114,.*|dhcp-option=114,http://$STATIC_IP/|" "$PROJECT_ROOT/dnsmasq.conf"
+    fi
+
+    # Update DNS redirect address
+    if grep -q "^address=/#/" "$PROJECT_ROOT/dnsmasq.conf"; then
+        sed -i "s|^address=/#/.*|address=/#/$STATIC_IP|" "$PROJECT_ROOT/dnsmasq.conf"
+    fi
+
+    echo -e "  ${GREEN}✓${NC} Updated dnsmasq.conf"
 else
     echo -e "  ${YELLOW}!${NC} dnsmasq.conf not found"
 fi

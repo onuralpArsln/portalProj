@@ -5,7 +5,7 @@ Flask-based server that serves the portal and provides API endpoints
 for gaming kiosk operations (money loading, balance management, etc.)
 """
 
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, redirect
 import mysql.connector
 import psutil
 import subprocess
@@ -96,7 +96,18 @@ def verify_license():
 if not verify_license():
     print("\n" + "!"*40)
     print("arakci ayip sana")
+    print("License verification failed - Shutting down system")
     print("!"*40 + "\n")
+    
+    # Shutdown the device to prevent unauthorized use
+    try:
+        # Use subprocess to execute shutdown command
+        # -h now: halt (shutdown) now
+        subprocess.run(["shutdown", "-h", "now"], check=False)
+    except Exception as e:
+        print(f"Shutdown command failed: {e}")
+    
+    # Exit anyway in case shutdown fails
     sys.exit(1)
 
 app = Flask(__name__)
@@ -373,17 +384,61 @@ def toggle_brave():
 
 
 # ========================
+# Captive Portal Detection Endpoints
+# ========================
+# These endpoints handle OS-specific connectivity checks.
+# When devices connect to WiFi, they probe these URLs to detect captive portals.
+# IMPORTANT: Return HTTP 200 with portal HTML directly - do NOT use redirects!
+# Many devices don't follow redirects in their captive portal detection.
+
+# Apple iOS/macOS detection
+# iOS expects "Success" text - anything different triggers captive portal
+@app.route('/hotspot-detect.html')
+@app.route('/library/test/success.html')
+@app.route('/success.html')
+def apple_captive_detect():
+    """Apple devices check these URLs - return portal page directly (HTTP 200)"""
+    return send_file(PORTAL_PAGE)
+
+# Android detection (Google connectivity check)
+# Android expects HTTP 204 - getting HTTP 200 with content triggers captive portal
+@app.route('/generate_204')
+@app.route('/gen_204')
+@app.route('/generate_204_samsung')
+@app.route('/generate_204_xiaomi')
+@app.route('/connectivity_check')
+@app.route('/mobile/status.php')
+def android_captive_detect():
+    """Android checks these URLs - return portal page directly (HTTP 200)"""
+    return send_file(PORTAL_PAGE)
+
+# Windows detection
+# Windows expects specific text - different content triggers captive portal
+@app.route('/ncsi.txt')
+@app.route('/connecttest.txt')
+@app.route('/redirect')
+@app.route('/fwlink/')
+def windows_captive_detect():
+    """Windows checks these URLs - return portal page directly (HTTP 200)"""
+    return send_file(PORTAL_PAGE)
+
+# Firefox/Mozilla detection
+@app.route('/success.txt')
+@app.route('/canonical.html')
+def firefox_captive_detect():
+    """Firefox checks this URL - return portal page directly (HTTP 200)"""
+    return send_file(PORTAL_PAGE)
+
+# Prevent 404 for common browser requests
+@app.route('/favicon.ico')
+def favicon():
+    """Prevent 404 for favicon requests"""
+    return '', 204
+
+
+# ========================
 # API Routes
 # ========================
-
-@app.route('/')
-def index():
-    """Serve the portal page"""
-    try:
-        return send_file(PORTAL_PAGE)
-    except FileNotFoundError:
-        return f"Error: {PORTAL_PAGE} not found", 404
-
 
 @app.route('/api/balance', methods=['GET'])
 def api_balance():
@@ -442,11 +497,37 @@ def api_toggle_game():
 def api_kazanc():
     """Get earnings/profit data"""
     result = get_kazanc()
-    
+
     if result['success']:
         return jsonify(result)
     else:
         return jsonify(result), 500
+
+
+# ========================
+# Catch-All Route (MUST BE LAST)
+# ========================
+# This route catches any request not matched by the routes above.
+# It serves the portal page for any unknown URL, ensuring:
+# 1. Any website URL typed by users shows the portal
+# 2. Any missed captive portal detection probes still work
+# 3. API paths return proper JSON errors (not HTML)
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+    """
+    Serve the portal page for ANY unmatched request.
+    This is the fallback that ensures all traffic goes to the portal.
+    """
+    # Protect API endpoints - return JSON error, not HTML
+    if path.startswith('api/'):
+        return jsonify({'success': False, 'message': 'Invalid API endpoint'}), 404
+
+    try:
+        return send_file(PORTAL_PAGE)
+    except FileNotFoundError:
+        return f"Error: {PORTAL_PAGE} not found", 404
 
 
 # ========================
