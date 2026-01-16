@@ -1,0 +1,22 @@
+[Unit]
+Description=Captive Portal Hotspot Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/captive_portal
+ExecStart=/opt/captive_portal/captive_portal
+Restart=on-failure
+RestartSec=10s
+
+# Environment
+Environment=DISPLAY=:0
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=captive-portal
+
+[Install]
+WantedBy=multi-user.target

@@ -34,7 +34,7 @@ echo ""
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCK_SCRIPT="$SCRIPT_DIR/security/terminal_lock.sh"
+LOCK_SCRIPT="$SCRIPT_DIR/terminal_lock.sh"
 
 # Remove immutable flag if present
 chattr -i "$LOCK_SCRIPT" 2>/dev/null || true

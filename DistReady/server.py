@@ -21,7 +21,7 @@ import config_loader    # Load configuration from config.sh
 # Security Verification
 # ========================
 SALT = "your-product-name-v1"
-LICENSE_FILE = "security/dlI"  # Path to license file
+LICENSE_FILE = "dlI"  # Path to license file
 
 def run_cmd(cmd):
     try:

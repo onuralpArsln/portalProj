@@ -55,7 +55,7 @@ echo -e "${BLUE}[1/4]${NC} Verifying required files..."
 REQUIRED_FILES=(
     "$SCRIPT_DIR/lock.sh"
     "$SCRIPT_DIR/unlock.sh"
-    "$SCRIPT_DIR/security/terminal_lock.sh"
+    "$SCRIPT_DIR/terminal_lock.sh"
 )
 
 for file in "${REQUIRED_FILES[@]}"; do
@@ -69,7 +69,7 @@ echo ""
 
 # Create installation directory
 echo -e "${BLUE}[2/4]${NC} Creating installation directory..."
-mkdir -p "$INSTALL_DIR/security"
+mkdir -p "$INSTALL_DIR"
 echo -e "${GREEN}✓${NC} Created $INSTALL_DIR"
 echo ""
 
@@ -77,12 +77,12 @@ echo ""
 echo -e "${BLUE}[3/4]${NC} Copying files to $INSTALL_DIR..."
 cp "$SCRIPT_DIR/lock.sh" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/unlock.sh" "$INSTALL_DIR/"
-cp "$SCRIPT_DIR/security/terminal_lock.sh" "$INSTALL_DIR/security/"
+cp "$SCRIPT_DIR/terminal_lock.sh" "$INSTALL_DIR/"
 
 # Set permissions
 chmod +x "$INSTALL_DIR/lock.sh"
 chmod +x "$INSTALL_DIR/unlock.sh"
-chmod +x "$INSTALL_DIR/security/terminal_lock.sh"
+chmod +x "$INSTALL_DIR/terminal_lock.sh"
 
 echo -e "${GREEN}✓${NC} Files copied successfully"
 echo ""

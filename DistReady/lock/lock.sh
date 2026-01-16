@@ -35,11 +35,11 @@ echo ""
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCK_SCRIPT="$SCRIPT_DIR/security/terminal_lock.sh"
+LOCK_SCRIPT="$SCRIPT_DIR/terminal_lock.sh"
 
 # Make sure lock script exists and is executable
 if [ ! -f "$LOCK_SCRIPT" ]; then
-    echo -e "${RED}Error: terminal_lock.sh not found in security/${NC}"
+    echo -e "${RED}Error: terminal_lock.sh not found in same directory${NC}"
     exit 1
 fi
 
