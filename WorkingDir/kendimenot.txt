@@ -1,0 +1,157 @@
+hedefe dnsmasq.conf hostapd.conf ve config.sh at 
+hedefte consifgure.sh çalıştır cdosyları ayarlasın
+hedefte SUDO ile secgen.py çalıştır dlI dosyası oluştursun 
+sonra dist içinden captive portalı al hedefe at project2 yap adını
+
+hostapd.conf ve config.sh  dlI  project2 aynı yerde olacak
+sonra alttakki kurlumu yap 
+
+
+Here is a **step-by-step tutorial** for Linux Mint with **XFCE4** to make your GUI application (`/home/hp/project2`) start automatically at login **as root** using **pkexec**, without asking for a password every time.
+
+**Important warnings first**
+
+- Running GUI programs as root every boot is **convenient but risky** — any vulnerability or mistake in that program has full system access.
+- The method uses a custom Polkit **action** that allows this specific program to run as root without authentication → only do this if you trust the application.
+- Replace `/home/hp/project2` with the real full path to your executable if it's different.
+
+### Step 1: Create the Polkit policy file (allows password-less execution)
+
+```bash
+sudo mkdir -p /usr/share/polkit-1/actions
+```
+
+```bash
+sudo nano /usr/share/polkit-1/actions/com.user.project2-gui.policy
+```
+
+Paste exactly this content (change the path if your binary is somewhere else):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Local configuration</vendor>
+  <vendor_url>local</vendor_url>
+
+  <action id="com.user.project2.run">
+    <description>Run Project2 GUI as root without password</description>
+    <message>Running Project2 (elevated privileges)</message>
+
+    <defaults>
+      <allow_any>yes</allow_any>
+      <allow_inactive>yes</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+
+    <annotate key="org.freedesktop.policykit.exec.path">/home/hp/project2</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+</policyconfig>
+```
+
+Save and exit (`Ctrl+O` → Enter → `Ctrl+X`).
+
+Set correct permissions (important):
+
+```bash
+sudo chmod 644 /usr/share/polkit-1/actions/com.user.project2-gui.policy
+```
+
+### Step 2: Test the pkexec command (very important!)
+
+Try these two variants in a terminal:
+
+**Variant A** (most reliable in recent Mint/XFCE):
+
+```bash
+pkexec /home/hp/project2
+```
+
+**Variant B** (sometimes needed when DISPLAY is not inherited properly):
+
+```bash
+pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY /home/hp/project2
+```
+
+- The window should appear **without asking for a password**.
+- If it still asks → something is wrong with the policy file (path mismatch, typo, wrong permissions, SELinux? → unlikely on Mint).
+- If it launches but looks broken/missing icons → use variant B.
+
+Choose the variant that works best for you — most people on Mint 21/22 use **variant A** successfully with a correct `.policy` file.
+
+### Step 3: Create the autostart .desktop file
+
+```bash
+mkdir -p ~/.config/autostart
+```
+
+```bash
+nano ~/.config/autostart/project2-root.desktop
+```
+
+Paste this (use the pkexec line that worked in step 2):
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=Project2 GUI (root)
+Comment=Starts Project2 with root privileges at login
+Exec=pkexec /home/hp/project2
+# ────────────────────────────────────────
+# If variant B worked better, use this instead:
+# Exec=pkexec env DISPLAY=%i XAUTHORITY=%i /home/hp/project2
+# ────────────────────────────────────────
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+StartupNotify=false
+```
+
+Save and exit.
+
+**Optional but recommended additions** (helps avoid some timing issues):
+
+```ini
+X-GNOME-Autostart-Delay=8
+```
+
+or
+
+```ini
+Exec=sh -c "sleep 6 && pkexec /home/hp/project2"
+```
+
+### Step 4: Final checks & troubleshooting
+
+1. **Reboot** and see if the program starts automatically (no password prompt).
+2. Check whether the Polkit agent is running:
+
+   ```bash
+   ps aux | grep -i polkit
+   ```
+
+   You should see something like:
+
+   ```
+   … /usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1
+   ```
+
+   If **not** → open  
+   **Menu → Settings → Session and Startup → Application Autostart**  
+   and make sure **“PolicyKit Authentication Agent”** is **checked**.
+
+3. If the app still asks for password → most common reasons:
+
+   - Wrong path in the `.policy` file
+   - Typo in action id or annotate keys
+   - File permissions wrong on the policy file
+   - You edited `/etc/polkit-1/localauthority/` instead of `/usr/share/polkit-1/actions/`
+
+4. If the window appears but is broken → try the `env DISPLAY=…` version in the `.desktop` file.
+
+This should give you silent auto-start as root on XFCE / Linux Mint.
+
+Good luck — and stay safe with root GUI apps!

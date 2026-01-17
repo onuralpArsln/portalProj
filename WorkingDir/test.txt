@@ -1,0 +1,54 @@
+sudo mkdir -p /usr/share/polkit-1/actions
+
+sudo nano /usr/share/polkit-1/actions/com.user.project2-gui.policy
+
+--------
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+
+  <vendor>Local user</vendor>
+  <vendor_url>local</vendor_url>
+
+  <action id="com.user.project2.run">
+    <description>Run project2 GUI application as root</description>
+    <message>Run project2 GUI application</message>
+    <defaults>
+      <allow_any>yes</allow_any>
+      <allow_inactive>yes</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/home/hp/project2</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+</policyconfig>
+
+--------
+
+pkexec /home/hp/project2
+
+------
+pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY /home/hp/project2
+
+-----
+
+mkdir -p ~/.config/autostart
+
+nano ~/.config/autostart/project2.desktop
+----
+
+[Desktop Entry]
+Type=Application
+Name=Project2 GUI (root)
+Exec=pkexec /home/hp/project2
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+
+
+
+
