@@ -626,6 +626,8 @@ def catch_all(path):
 
 if __name__ == "__main__":
     # Check if portal page exists
+    server_display.show_notification("Server Başlatıldı")
+
     init_server()
     
     # Port configuration

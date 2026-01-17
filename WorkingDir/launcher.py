@@ -8,6 +8,8 @@ import psutil
 import socket
 import config_loader
 import server
+import server_display  # Server-side on-screen notifications
+
 
 # Colors for output
 RED = '\033[0;31m'
@@ -360,20 +362,27 @@ def cleanup(sig, frame):
         run_cmd("killall hostapd 2>/dev/null", check=False)
         run_cmd("killall dnsmasq 2>/dev/null", check=False)
         
-        # 2. Clear iptables rules
+        # 2. Clear iptables rules (Full cleanup matching cleanup_all)
         log_info("Clearing iptables rules...")
         run_cmd("iptables -F", check=False)
         run_cmd("iptables -t nat -F", check=False)
+        run_cmd("iptables -t mangle -F", check=False)
+        run_cmd("iptables -X", check=False)
+        run_cmd("iptables -t nat -X", check=False)
+        run_cmd("iptables -t mangle -X", check=False)
+        run_cmd("iptables -P INPUT ACCEPT", check=False)
+        run_cmd("iptables -P FORWARD ACCEPT", check=False)
+        run_cmd("iptables -P OUTPUT ACCEPT", check=False)
         
         # 3. Reset interface
         log_info(f"Resetting interface {iface}...")
         run_cmd(f"ip addr flush dev {iface}", check=False)
         run_cmd(f"ip link set {iface} down", check=False)
         
-        # 4. Restore NetworkManager
+        # 4. Restore NetworkManager management (No restart!)
         log_info("Restoring NetworkManager management...")
         run_cmd(f"nmcli device set {iface} managed yes", check=False)
-        run_cmd("systemctl restart NetworkManager", check=False)
+        # run_cmd("systemctl restart NetworkManager", check=False) # REMOVED: Causes race condition
         
         log_success("Cleanup complete. Networking restored.")
     except Exception as e:
@@ -382,6 +391,23 @@ def cleanup(sig, frame):
         sys.exit(0)
 
 if __name__ == "__main__":
+    # Write launch time to log immediately
+    try:
+        log_path = os.path.join(get_executable_dir(), "launchlog.txt")
+        with open(log_path, "a") as f:
+            f.write(f"Launcher started at: {time.ctime()}\n")
+            # Force flush to ensure it's written even if we crash immediately
+            f.flush()
+            os.fsync(f.fileno())
+    except Exception as e:
+        print(f"Failed to write launch log: {e}")
+    
+    a=10
+    for i in range(10):
+        a*=a
+        time.sleep(1)
+
+    server_display.show_notification("Merhaba")
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
     start_services()

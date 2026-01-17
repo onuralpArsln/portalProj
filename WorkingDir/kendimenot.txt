@@ -2,6 +2,8 @@ hedefe dnsmasq.conf hostapd.conf ve config.sh at
 hedefte consifgure.sh çalıştır cdosyları ayarlasın
 hedefte SUDO ile secgen.py çalıştır dlI dosyası oluştursun 
 sonra dist içinden captive portalı al hedefe at project2 yap adını
+öbür autostart desktoplari iptal et
+~/.config/autostart ta kuamndayı uçur
 
 hostapd.conf ve config.sh  dlI  project2 aynı yerde olacak
 sonra alttakki kurlumu yap 
@@ -100,6 +102,7 @@ Type=Application
 Name=Project2 GUI (root)
 Comment=Starts Project2 with root privileges at login
 Exec=pkexec /home/hp/project2
+Exec=sh -c "sleep 10 && pkexec /home/hp/project2"
 # ────────────────────────────────────────
 # If variant B worked better, use this instead:
 # Exec=pkexec env DISPLAY=%i XAUTHORITY=%i /home/hp/project2
